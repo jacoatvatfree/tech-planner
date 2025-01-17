@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.gantt_container {
+  @apply w-full h-full font-sans;
+}
+
+.gantt_grid_scale .gantt_grid_head_cell,
+.gantt_task .gantt_task_scale .gantt_scale_cell {
+  @apply text-sm font-medium text-gray-700;
+}
+
+.gantt_task_line {
+  @apply rounded-md border border-blue-600 bg-blue-500;
+}
+
+.gantt_task_line.overallocated {
+  @apply border-red-600 bg-red-500;
+}
+
+.gantt_task_line.underallocated {
+  @apply border-yellow-600 bg-yellow-500;
+}
