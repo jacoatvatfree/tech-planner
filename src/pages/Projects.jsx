@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import useProjectStore from "../store/projectStore";
 import useEngineerStore from "../store/engineerStore";
+import { makeProject } from "../lib";
 import { PlusIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { format } from "date-fns";
 
 function Projects() {
-  const { projects, addProject, updateProject, removeProject } =
-    useProjectStore();
+  const { projects, addProject, updateProject, removeProject } = useProjectStore();
   const { engineers } = useEngineerStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
@@ -14,107 +14,22 @@ function Projects() {
     name: "",
     description: "",
     estimatedHours: 0,
-    startDate: format(new Date(), "yyyy-MM-dd"),
-    endDate: format(new Date(), "yyyy-MM-dd"),
-    assignedEngineers: [],
-    allocation: 100,
+    startAfter: format(new Date(), "yyyy-MM-dd"),
+    endBefore: "",
+    priority: 3,
+    assignedEngineers: []
   });
-
-  const calculateDuration = (estimatedHours, allocation, assignedEngineers) => {
-    // Assuming 8 working hours per day
-    const hoursPerDay = 8;
-    // Total resource hours per day = number of engineers * (allocation/100) * 8
-    const dailyResourceHours =
-      assignedEngineers.length * (allocation / 100) * hoursPerDay;
-    // Duration in days = estimated hours / daily resource hours
-    const durationDays = Math.ceil(estimatedHours / (dailyResourceHours || 1));
-    return durationDays;
-  };
-
-  const findEarliestAvailableStart = (engineers, duration, allocation) => {
-    const projects = useProjectStore.getState().projects;
-    let latestEndDate = new Date();
-
-    engineers.forEach((engineerId) => {
-      // Get all projects for this engineer
-      const engineerProjects = projects.filter((p) =>
-        p.assignedEngineers.includes(engineerId),
-      );
-
-      // Sort projects by start date
-      engineerProjects.sort(
-        (a, b) => new Date(a.startDate) - new Date(b.startDate),
-      );
-
-      let currentDate = new Date();
-      let currentAllocation = 0;
-
-      // Create timeline of allocations
-      const timeline = [];
-      engineerProjects.forEach((project) => {
-        const startDate = new Date(project.startDate);
-        const endDate = new Date(project.startDate);
-        endDate.setDate(endDate.getDate() + (project.duration || 0));
-
-        timeline.push({
-          date: startDate,
-          type: "start",
-          allocation: project.allocation,
-        });
-        timeline.push({
-          date: endDate,
-          type: "end",
-          allocation: project.allocation,
-        });
-      });
-
-      // Sort timeline events
-      timeline.sort((a, b) => a.date - b.date);
-
-      // Find first available slot
-      for (let i = 0; i < timeline.length; i++) {
-        const event = timeline[i];
-
-        if (event.type === "start") {
-          currentAllocation += event.allocation;
-        } else {
-          currentAllocation -= event.allocation;
-        }
-
-        if (currentAllocation + allocation > 100) {
-          currentDate = timeline[i].date;
-        }
-
-        if (currentDate > latestEndDate) {
-          latestEndDate = new Date(currentDate);
-        }
-      }
-    });
-
-    // Add one day to ensure no overlap
-    latestEndDate.setDate(latestEndDate.getDate() + 1);
-    return format(latestEndDate, "yyyy-MM-dd");
-  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const duration = calculateDuration(
-      formData.estimatedHours,
-      formData.allocation,
-      formData.assignedEngineers,
-    );
-
-    const projectData = {
-      ...formData,
-      duration,
-      startDate: editingProject
-        ? formData.startDate
-        : findEarliestAvailableStart(
-            formData.assignedEngineers,
-            duration,
-            formData.allocation,
-          ),
-    };
+    const projectData = makeProject({
+      name: formData.name,
+      estimatedHours: Number(formData.estimatedHours),
+      startAfter: formData.startAfter ? new Date(formData.startAfter) : null,
+      endBefore: formData.endBefore ? new Date(formData.endBefore) : null,
+      priority: Number(formData.priority),
+      assignedEngineers: formData.assignedEngineers
+    });
 
     if (editingProject) {
       updateProject(editingProject.id, projectData);
@@ -129,10 +44,10 @@ function Projects() {
       name: "",
       description: "",
       estimatedHours: 0,
-      startDate: format(new Date(), "yyyy-MM-dd"),
-      endDate: format(new Date(), "yyyy-MM-dd"),
-      assignedEngineers: [],
-      allocation: 100,
+      startAfter: format(new Date(), "yyyy-MM-dd"),
+      endBefore: "",
+      priority: 3,
+      assignedEngineers: []
     });
     setEditingProject(null);
     setIsModalOpen(false);
@@ -144,10 +59,10 @@ function Projects() {
       name: project.name,
       description: project.description || "",
       estimatedHours: project.estimatedHours,
-      startDate: format(new Date(project.startDate), "yyyy-MM-dd"),
-      endDate: format(new Date(project.endDate), "yyyy-MM-dd"),
-      assignedEngineers: project.assignedEngineers || [],
-      allocation: project.allocation,
+      startAfter: project.startAfter ? format(new Date(project.startAfter), "yyyy-MM-dd") : "",
+      endBefore: project.endBefore ? format(new Date(project.endBefore), "yyyy-MM-dd") : "",
+      priority: project.priority,
+      assignedEngineers: project.assignedEngineers || []
     });
     setIsModalOpen(true);
   };
@@ -177,12 +92,15 @@ function Projects() {
                   <div className="mt-1 text-sm text-gray-500">
                     <p>{project.description}</p>
                     <p>Estimated Hours: {project.estimatedHours}</p>
+                    <p>Priority: {project.priority}</p>
                     <p>
-                      Timeline:{" "}
-                      {format(new Date(project.startDate), "MMM d, yyyy")} -{" "}
-                      {format(new Date(project.endDate), "MMM d, yyyy")}
+                      Start After:{" "}
+                      {project.startAfter ? format(new Date(project.startAfter), "MMM d, yyyy") : "Not set"}
                     </p>
-                    <p>Allocation: {project.allocation}%</p>
+                    <p>
+                      End Before:{" "}
+                      {project.endBefore ? format(new Date(project.endBefore), "MMM d, yyyy") : "Not set"}
+                    </p>
                   </div>
                 </div>
                 <div className="flex space-x-2">
@@ -213,93 +131,73 @@ function Projects() {
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Name
-                </label>
+                <label className="block text-sm font-medium text-gray-700">Name</label>
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Description
-                </label>
+                <label className="block text-sm font-medium text-gray-700">Description</label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   rows={3}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Estimated Hours
-                </label>
+                <label className="block text-sm font-medium text-gray-700">Estimated Hours</label>
                 <input
                   type="number"
                   value={formData.estimatedHours}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      estimatedHours: parseInt(e.target.value),
-                    })
-                  }
+                  onChange={(e) => setFormData({ ...formData, estimatedHours: parseInt(e.target.value) })}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Start Date
-                </label>
+                <label className="block text-sm font-medium text-gray-700">Start After</label>
                 <input
                   type="date"
-                  value={formData.startDate}
-                  onChange={(e) =>
-                    setFormData({ ...formData, startDate: e.target.value })
-                  }
+                  value={formData.startAfter}
+                  onChange={(e) => setFormData({ ...formData, startAfter: e.target.value })}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  End Date
-                </label>
+                <label className="block text-sm font-medium text-gray-700">End Before</label>
                 <input
                   type="date"
-                  value={formData.endDate}
-                  onChange={(e) =>
-                    setFormData({ ...formData, endDate: e.target.value })
-                  }
+                  value={formData.endBefore}
+                  onChange={(e) => setFormData({ ...formData, endBefore: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Priority (1-5)</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="5"
+                  value={formData.priority}
+                  onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) })}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Assigned Engineers
-                </label>
+                <label className="block text-sm font-medium text-gray-700">Assigned Engineers</label>
                 <select
                   multiple
                   value={formData.assignedEngineers}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      assignedEngineers: Array.from(
-                        e.target.selectedOptions,
-                        (option) => option.value,
-                      ),
-                    })
-                  }
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    assignedEngineers: Array.from(e.target.selectedOptions, option => option.value)
+                  })}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 >
                   {engineers.map((engineer) => (
@@ -308,25 +206,6 @@ function Projects() {
                     </option>
                   ))}
                 </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Allocation (%)
-                </label>
-                <input
-                  type="number"
-                  value={formData.allocation}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      allocation: parseInt(e.target.value),
-                    })
-                  }
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  min="0"
-                  max="100"
-                  required
-                />
               </div>
               <div className="flex justify-end space-x-3">
                 <button

@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import useEngineerStore from '../store/engineerStore'
+import { makeEngineer } from '../lib'
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 
 function Engineers() {
@@ -9,16 +10,21 @@ function Engineers() {
   const [formData, setFormData] = useState({
     name: '',
     weeklyHours: 40,
-    skills: '',
-    availability: 100
+    skills: ''
   })
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    const engineerData = makeEngineer({
+      name: formData.name,
+      weeklyHours: Number(formData.weeklyHours),
+      skills: formData.skills
+    })
+
     if (editingEngineer) {
-      updateEngineer(editingEngineer.id, formData)
+      updateEngineer(editingEngineer.id, engineerData)
     } else {
-      addEngineer(formData)
+      addEngineer(engineerData)
     }
     resetForm()
   }
@@ -27,8 +33,7 @@ function Engineers() {
     setFormData({
       name: '',
       weeklyHours: 40,
-      skills: '',
-      availability: 100
+      skills: ''
     })
     setEditingEngineer(null)
     setIsModalOpen(false)
@@ -39,8 +44,7 @@ function Engineers() {
     setFormData({
       name: engineer.name,
       weeklyHours: engineer.weeklyHours,
-      skills: engineer.skills,
-      availability: engineer.availability
+      skills: engineer.skills
     })
     setIsModalOpen(true)
   }
@@ -68,7 +72,6 @@ function Engineers() {
                   <div className="mt-1 text-sm text-gray-500">
                     <p>Weekly Hours: {engineer.weeklyHours}</p>
                     <p>Skills: {engineer.skills}</p>
-                    <p>Availability: {engineer.availability}%</p>
                   </div>
                 </div>
                 <div className="flex space-x-2">
@@ -125,18 +128,6 @@ function Engineers() {
                   value={formData.skills}
                   onChange={(e) => setFormData({ ...formData, skills: e.target.value })}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Availability (%)</label>
-                <input
-                  type="number"
-                  value={formData.availability}
-                  onChange={(e) => setFormData({ ...formData, availability: parseInt(e.target.value) })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  min="0"
-                  max="100"
-                  required
                 />
               </div>
               <div className="flex justify-end space-x-3">
