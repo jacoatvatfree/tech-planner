@@ -1,24 +1,68 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import mermaid from "mermaid";
 import { format } from "date-fns";
 
 function GanttChart({ tasks }) {
+  const chartRef = useRef(null);
+  const chartId = useRef(`mermaid-${Math.random().toString(36).substr(2, 9)}`);
+
   useEffect(() => {
-    mermaid.initialize({
-      theme: "default",
-      gantt: {
-        titleTopMargin: 25,
-        barHeight: 20,
-        barGap: 4,
-        topPadding: 50,
-        leftPadding: 75,
-        gridLineStartPadding: 35,
-        fontSize: 11,
-        numberSectionStyles: 4,
-        axisFormat: "%Y-%m-%d",
-      },
-    });
-  }, []);
+    let mounted = true;
+
+    const initializeMermaid = async () => {
+      await mermaid.initialize({
+        theme: "default",
+        gantt: {
+          titleTopMargin: 25,
+          barHeight: 20,
+          barGap: 4,
+          topPadding: 50,
+          leftPadding: 75,
+          gridLineStartPadding: 35,
+          fontSize: 11,
+          numberSectionStyles: 4,
+          axisFormat: "%Y-%m-%d",
+        },
+        startOnLoad: true,
+        securityLevel: "loose",
+      });
+
+      // Wait a tick for the DOM to be ready
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      if (mounted && chartRef.current) {
+        try {
+          const { svg } = await mermaid.render(
+            chartId.current,
+            generateMermaidSyntax(),
+          );
+          if (mounted && chartRef.current) {
+            chartRef.current.innerHTML = svg;
+          }
+        } catch (error) {
+          console.error("Mermaid rendering failed:", error);
+        }
+      }
+    };
+
+    initializeMermaid();
+    // Cleanup function
+    return () => {
+      mounted = false;
+      if (chartRef.current) {
+        chartRef.current.innerHTML = "";
+      }
+    };
+  }, [tasks]);
+
+  useEffect(() => {
+    if (chartRef.current) {
+      // Clear previous chart
+      chartRef.current.innerHTML = generateMermaidSyntax();
+      // Reinitialize mermaid parsing
+      mermaid.contentLoaded();
+    }
+  }, [tasks]);
 
   const generateMermaidSyntax = () => {
     const sections = {};
@@ -62,7 +106,15 @@ function GanttChart({ tasks }) {
 
   return (
     <div className="w-full">
-      <div className="mermaid">{generateMermaidSyntax()}</div>
+      <div ref={chartRef} className="mermaid-container" />
+      <div className="mt-8 p-4 bg-gray-50 rounded-lg">
+        <h3 className="text-sm font-medium text-gray-700 mb-2">
+          Mermaid Markdown:
+        </h3>
+        <pre className="whitespace-pre-wrap text-sm font-mono bg-white p-4 rounded border border-gray-200">
+          {generateMermaidSyntax()}
+        </pre>
+      </div>
     </div>
   );
 }

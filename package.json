@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@bitnoi.se/react-scheduler": "^0.3.1",
     "@headlessui/react": "^1.7.17",
     "@heroicons/react": "^2.0.18",
     "@mermaid-js/mermaid-cli": "^11.4.2",

@@ -33,7 +33,7 @@ function Projects() {
 
   const findEarliestAvailableStart = (engineers, duration, allocation) => {
     const projects = useProjectStore.getState().projects;
-    let earliestStart = new Date();
+    let latestEndDate = new Date();
 
     engineers.forEach((engineerId) => {
       // Get all projects for this engineer
@@ -46,26 +46,54 @@ function Projects() {
         (a, b) => new Date(a.startDate) - new Date(b.startDate),
       );
 
-      // Find gaps in schedule
       let currentDate = new Date();
+      let currentAllocation = 0;
 
+      // Create timeline of allocations
+      const timeline = [];
       engineerProjects.forEach((project) => {
-        const projectStart = new Date(project.startDate);
-        const projectEnd = new Date(project.startDate);
-        projectEnd.setDate(projectEnd.getDate() + (project.duration || 0));
+        const startDate = new Date(project.startDate);
+        const endDate = new Date(project.startDate);
+        endDate.setDate(endDate.getDate() + (project.duration || 0));
 
-        // Check if there's enough capacity in this time period
-        if (project.allocation + allocation > 100) {
-          currentDate = projectEnd;
-        }
+        timeline.push({
+          date: startDate,
+          type: "start",
+          allocation: project.allocation,
+        });
+        timeline.push({
+          date: endDate,
+          type: "end",
+          allocation: project.allocation,
+        });
       });
 
-      if (currentDate > earliestStart) {
-        earliestStart = currentDate;
+      // Sort timeline events
+      timeline.sort((a, b) => a.date - b.date);
+
+      // Find first available slot
+      for (let i = 0; i < timeline.length; i++) {
+        const event = timeline[i];
+
+        if (event.type === "start") {
+          currentAllocation += event.allocation;
+        } else {
+          currentAllocation -= event.allocation;
+        }
+
+        if (currentAllocation + allocation > 100) {
+          currentDate = timeline[i].date;
+        }
+
+        if (currentDate > latestEndDate) {
+          latestEndDate = new Date(currentDate);
+        }
       }
     });
 
-    return format(earliestStart, "yyyy-MM-dd");
+    // Add one day to ensure no overlap
+    latestEndDate.setDate(latestEndDate.getDate() + 1);
+    return format(latestEndDate, "yyyy-MM-dd");
   };
 
   const handleSubmit = (e) => {
