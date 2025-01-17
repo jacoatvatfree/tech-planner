@@ -1,51 +1,70 @@
-import React, { useEffect, useRef } from 'react'
-import { gantt } from 'dhtmlx-gantt'
-import 'dhtmlx-gantt/codebase/dhtmlxgantt.css'
-import { format } from 'date-fns'
+import React, { useEffect } from "react";
+import mermaid from "mermaid";
+import { format } from "date-fns";
 
-function GanttChart({ tasks, onTaskUpdate }) {
-  const ganttContainer = useRef(null)
-
+function GanttChart({ tasks }) {
   useEffect(() => {
-    gantt.config.date_format = "%Y-%m-%d"
-    gantt.config.scale_unit = "week"
-    gantt.config.duration_unit = "hour"
-    gantt.config.row_height = 40
-    gantt.config.min_column_width = 50
+    mermaid.initialize({
+      theme: "default",
+      gantt: {
+        titleTopMargin: 25,
+        barHeight: 20,
+        barGap: 4,
+        topPadding: 50,
+        leftPadding: 75,
+        gridLineStartPadding: 35,
+        fontSize: 11,
+        numberSectionStyles: 4,
+        axisFormat: "%Y-%m-%d",
+      },
+    });
+  }, []);
 
-    gantt.templates.task_class = (start, end, task) => {
-      if (task.allocation > 100) return 'overallocated'
-      if (task.allocation < 80) return 'underallocated'
-      return ''
-    }
+  const generateMermaidSyntax = () => {
+    const sections = {};
 
-    gantt.init(ganttContainer.current)
-    gantt.parse({ data: tasks })
+    // Group tasks by engineers
+    tasks.forEach((task) => {
+      task.assignedEngineers.forEach((engineerId) => {
+        if (!sections[engineerId]) {
+          sections[engineerId] = [];
+        }
+        sections[engineerId].push(task);
+      });
+    });
 
-    gantt.attachEvent("onAfterTaskDrag", (id, mode) => {
-      const task = gantt.getTask(id)
-      onTaskUpdate(id, {
-        start_date: task.start_date,
-        end_date: task.end_date
-      })
-    })
+    let syntax = "gantt\n";
+    syntax += "dateFormat YYYY-MM-DD\n";
+    syntax += "title Resource Schedule\n\n";
 
-    return () => {
-      gantt.clearAll()
-    }
-  }, [])
+    // Add sections for each engineer
+    Object.entries(sections).forEach(([engineerId, engineerTasks]) => {
+      syntax += `section Engineer ${engineerId}\n`;
 
-  useEffect(() => {
-    gantt.clearAll()
-    gantt.parse({ data: tasks })
-  }, [tasks])
+      engineerTasks.forEach((task) => {
+        const startDate = format(new Date(task.start_date), "yyyy-MM-dd");
+        const duration = `${task.duration}d`;
+        const progress = task.progress || 0;
+        const allocation = task.allocation;
+
+        // Color coding based on allocation
+        const color =
+          allocation > 100 ? "crit" : allocation < 80 ? "active" : "done";
+
+        syntax += `${task.text} :${color}, ${startDate}, ${duration}\n`;
+      });
+
+      syntax += "\n";
+    });
+
+    return syntax;
+  };
 
   return (
-    <div 
-      ref={ganttContainer}
-      className="w-full h-[600px]"
-    />
-  )
+    <div className="w-full">
+      <div className="mermaid">{generateMermaidSyntax()}</div>
+    </div>
+  );
 }
 
-export default GanttChart
+export default GanttChart;

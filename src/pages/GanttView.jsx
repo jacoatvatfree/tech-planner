@@ -1,29 +1,40 @@
-import React from 'react'
-import GanttChart from '../components/GanttChart'
-import useProjectStore from '../store/projectStore'
+import React, { useMemo } from "react";
+import GanttChart from "../components/GanttChart";
+import useProjectStore from "../store/projectStore";
+import useEngineerStore from "../store/engineerStore";
 
 function GanttView() {
-  const { projects, updateProject } = useProjectStore()
+  const { projects } = useProjectStore();
+  const { engineers } = useEngineerStore();
 
-  const tasks = projects.map(project => ({
-    id: project.id,
-    text: project.name,
-    start_date: project.startDate,
-    end_date: project.endDate,
-    allocation: project.allocation,
-    progress: project.progress || 0
-  }))
+  const tasks = useMemo(
+    () =>
+      projects.map((project) => {
+        const startDate = new Date(project.startDate);
+        const duration =
+          project.duration || Math.ceil(project.estimatedHours / 8);
 
-  const handleTaskUpdate = (id, updates) => {
-    updateProject(id, updates)
-  }
+        return {
+          id: project.id,
+          text: project.name,
+          start_date: startDate,
+          duration: duration,
+          allocation: project.allocation,
+          progress: project.progress || 0,
+          assignedEngineers: project.assignedEngineers.map(
+            (engId) => engineers.find((eng) => eng.id === engId)?.name || engId,
+          ),
+        };
+      }),
+    [projects, engineers],
+  );
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <h2 className="text-2xl font-bold mb-6">Resource Schedule</h2>
-      <GanttChart tasks={tasks} onTaskUpdate={handleTaskUpdate} />
+      <GanttChart tasks={tasks} />
     </div>
-  )
+  );
 }
 
-export default GanttView
+export default GanttView;
