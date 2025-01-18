@@ -8,8 +8,37 @@ export function calculateSchedule(projects, engineers) {
   const engineerAvailability = {};
   engineers.forEach((eng) => (engineerAvailability[eng.id] = 0));
 
-  // Sort projects by priority (lower number = higher priority)
-  const sortedProjects = [...projects].sort((a, b) => a.priority - b.priority);
+  // Helper to get next Monday for a date
+  const getNextMonday = (date) => {
+    const result = new Date(date);
+    result.setHours(0, 0, 0, 0);
+    while (result.getDay() !== 1) {
+      // 1 = Monday
+      result.setDate(result.getDate() + 1);
+    }
+    return result;
+  };
+
+  // Find earliest startAfter date from all projects, snapped to Monday
+  const baseDate = getNextMonday(
+    projects.reduce((earliest, project) => {
+      if (!project.startAfter) return earliest;
+      const projectStart = new Date(project.startAfter);
+      return projectStart < earliest ? projectStart : earliest;
+    }, new Date()),
+  );
+
+  // Sort projects by priority first, then by startAfter date
+  const sortedProjects = [...projects].sort((a, b) => {
+    // First sort by priority (lower number = higher priority)
+    if (a.priority !== b.priority) {
+      return a.priority - b.priority;
+    }
+    // Then sort by startAfter date if priority is the same
+    const aStart = a.startAfter ? new Date(a.startAfter) : baseDate;
+    const bStart = b.startAfter ? new Date(b.startAfter) : baseDate;
+    return aStart - bStart;
+  });
 
   for (const project of sortedProjects) {
     if (!project.allocations?.length || !project.estimatedHours) {
@@ -33,8 +62,17 @@ export function calculateSchedule(projects, engineers) {
     // Calculate weeks needed based on total available hours per week
     const weeksNeeded = Math.ceil(project.estimatedHours / hoursPerWeek);
 
+    // Calculate weeks between base date and project start date
+    const projectStartDate = project.startAfter
+      ? new Date(project.startAfter)
+      : baseDate;
+    const weeksBetween = Math.floor(
+      (projectStartDate - baseDate) / (7 * 24 * 60 * 60 * 1000),
+    );
+
     // Find the latest available start week among all allocated engineers
     const latestStartWeek = Math.max(
+      weeksBetween,
       ...project.allocations.map((allocation) => {
         const engineer = engineers.find((e) => e.id === allocation.engineerId);
         return engineer ? engineerAvailability[engineer.id] : 0;
@@ -53,8 +91,15 @@ export function calculateSchedule(projects, engineers) {
         startWeek: latestStartWeek,
         weeksNeeded,
         percentage: allocation.percentage || 100,
-        startDate: new Date(
-          Date.now() + latestStartWeek * 7 * 24 * 60 * 60 * 1000,
+        startDate: getNextMonday(
+          new Date(
+            Math.max(
+              project.startAfter
+                ? new Date(project.startAfter).getTime()
+                : baseDate.getTime(),
+              baseDate.getTime() + latestStartWeek * 7 * 24 * 60 * 60 * 1000,
+            ),
+          ),
         ),
       });
 
