@@ -21,7 +21,7 @@ export default function ProjectForm({ onSubmit, editingProject, onCancel }) {
           estimatedHours: 0,
           startAfter: format(new Date(), "yyyy-MM-dd"),
           endBefore: "",
-          priority: 3,
+          priority: 999,
           allocations: [],
         },
   );
@@ -177,17 +177,19 @@ export default function ProjectForm({ onSubmit, editingProject, onCancel }) {
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Priority
         </label>
-        <select
+        <input
+          type="number"
           value={formData.priority}
           onChange={(e) =>
-            setFormData({ ...formData, priority: parseInt(e.target.value) })
+            setFormData({
+              ...formData,
+              priority: parseInt(e.target.value),
+            })
           }
-          className="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-        >
-          <option value="1">High</option>
-          <option value="2">Medium</option>
-          <option value="3">Low</option>
-        </select>
+          className="form-input mt-1 block w-1/4 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+          min="1"
+          required
+        />
       </div>
 
       <EngineerSelect

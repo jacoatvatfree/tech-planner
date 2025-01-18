@@ -1,4 +1,4 @@
-export function generateGanttMarkup(assignments, engineers) {
+export function generateGanttMarkup(assignments, engineers, projects) {
   if (!assignments?.length || !engineers?.length) {
     return `gantt
     dateFormat YYYY-MM-DD
@@ -70,8 +70,17 @@ export function generateGanttMarkup(assignments, engineers) {
         return sum + (eng.weeklyHours || 40) * (percentage / 100);
       }, 0);
 
-      // Always convert weeks to working days (5 days per week)
-      const days = Math.max(1, Math.ceil(assignment.weeksNeeded * 5));
+      // Find the original project to get estimated hours
+      const project = projects.find((p) => p.id === assignment.projectId);
+      if (!project) {
+        console.warn(
+          `Project not found for assignment: ${assignment.projectName}`,
+        );
+        return;
+      }
+
+      const hoursPerDay = totalWeeklyHours / 5; // Convert weekly hours to daily hours
+      const days = Math.max(1, Math.ceil(project.estimatedHours / hoursPerDay));
       const durationStr = `${days}d`;
 
       markup += `    ${escapedProjectName}${percentageLabel} :${startDate}, ${durationStr}\n`;

@@ -10,11 +10,27 @@ function Projects() {
   const [editingProject, setEditingProject] = useState(null);
 
   const handleSubmit = (projectData) => {
+    const { projects } = useProjectStore.getState();
+
     if (editingProject) {
       updateProject(editingProject.id, projectData);
     } else {
+      // First add the new project
       addProject(projectData);
     }
+    // Get updated projects and sort them
+    const updatedProjects = [...projects, projectData].sort(
+      (a, b) => a.priority - b.priority,
+    );
+
+    // Reassign priorities in increments of 10
+    updatedProjects.forEach((project, index) => {
+      updateProject(project.id, {
+        ...project,
+        priority: index + 1,
+      });
+    });
+
     setIsModalOpen(false);
     setEditingProject(null);
   };

@@ -22,12 +22,12 @@ export default function GanttView() {
     if (validProjects.length === 0 || engineers.length === 0) {
       return {
         assignments: [],
-        markup: generateGanttMarkup([], []),
+        markup: generateGanttMarkup([], [], []),
       };
     }
 
     const assignments = calculateSchedule(validProjects, engineers);
-    const markup = generateGanttMarkup(assignments, engineers);
+    const markup = generateGanttMarkup(assignments, engineers, validProjects);
     return { assignments, markup };
   }, [projects, engineers]);
 

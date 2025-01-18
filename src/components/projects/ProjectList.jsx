@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import ProjectListItem from "./ProjectListItem";
 import { useProjectStore } from "../../store/projectStore";
 
 export default function ProjectList({ onEdit }) {
   const { projects, updateProject } = useProjectStore();
   const [draggedProject, setDraggedProject] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -62,26 +63,43 @@ export default function ProjectList({ onEdit }) {
     });
   };
 
-  const sortedProjects = [...projects].sort((a, b) => a.priority - b.priority);
+  const filteredAndSortedProjects = useMemo(() => {
+    return [...projects]
+      .filter((project) =>
+        project.name.toLowerCase().includes(searchTerm.toLowerCase()),
+      )
+      .sort((a, b) => a.priority - b.priority);
+  }, [projects, searchTerm]);
 
   return (
-    <div className="bg-white shadow overflow-hidden sm:rounded-md">
-      <ul className="divide-y divide-gray-200">
-        {sortedProjects.map((project) => (
-          <li
-            key={project.id}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={(e) => handleDrop(e, project)}
-          >
-            <ProjectListItem
-              project={project}
-              onEdit={onEdit}
-              onDragStart={() => setDraggedProject(project)}
-            />
-          </li>
-        ))}
-      </ul>
+    <div>
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search projects..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
+      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+        <ul className="divide-y divide-gray-200">
+          {filteredAndSortedProjects.map((project) => (
+            <li
+              key={project.id}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, project)}
+            >
+              <ProjectListItem
+                project={project}
+                onEdit={onEdit}
+                onDragStart={() => setDraggedProject(project)}
+              />
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
