@@ -1,10 +1,10 @@
-import React from 'react'
-import { Routes, Route } from 'react-router-dom'
-import Layout from './components/Layout'
-import Dashboard from './pages/Dashboard'
-import Engineers from './pages/Engineers'
-import Projects from './pages/Projects'
-import GanttView from './pages/GanttView'
+import React from "react";
+import { Routes, Route } from "react-router-dom";
+import Layout from "./components/Layout";
+import Dashboard from "./pages/Dashboard";
+import Engineers from "./pages/Engineers";
+import Projects from "./pages/Projects";
+import GanttView from "./pages/GanttView";
 
 function App() {
   return (
@@ -13,10 +13,10 @@ function App() {
         <Route index element={<Dashboard />} />
         <Route path="engineers" element={<Engineers />} />
         <Route path="projects" element={<Projects />} />
-        <Route path="gantt" element={<GanttView />} />
+        <Route path="schedule" element={<GanttView />} />
       </Route>
     </Routes>
-  )
+  );
 }
 
-export default App
+export default App;

@@ -1,13 +1,18 @@
-import React from 'react'
-import { Link, Outlet } from 'react-router-dom'
-import { HomeIcon, UserGroupIcon, ClipboardIcon, ChartBarIcon } from '@heroicons/react/24/outline'
+import React from "react";
+import { Link, Outlet } from "react-router-dom";
+import {
+  HomeIcon,
+  UserGroupIcon,
+  ClipboardIcon,
+  CalendarIcon,
+} from "@heroicons/react/24/outline";
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: HomeIcon },
-  { name: 'Engineers', href: '/engineers', icon: UserGroupIcon },
-  { name: 'Projects', href: '/projects', icon: ClipboardIcon },
-  { name: 'Gantt Chart', href: '/gantt', icon: ChartBarIcon },
-]
+  { name: "Dashboard", href: "/", icon: HomeIcon },
+  { name: "Engineers", href: "/engineers", icon: UserGroupIcon },
+  { name: "Projects", href: "/projects", icon: ClipboardIcon },
+  { name: "Schedule", href: "/schedule", icon: CalendarIcon },
+];
 
 function Layout() {
   return (
@@ -17,7 +22,9 @@ function Layout() {
           <div className="flex h-16 justify-between">
             <div className="flex">
               <div className="flex flex-shrink-0 items-center">
-                <span className="text-xl font-bold text-gray-900">Resource Planner</span>
+                <span className="text-xl font-bold text-gray-900">
+                  Resource Planner
+                </span>
               </div>
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
                 {navigation.map((item) => (
@@ -42,7 +49,7 @@ function Layout() {
         </div>
       </main>
     </div>
-  )
+  );
 }
 
-export default Layout
+export default Layout;

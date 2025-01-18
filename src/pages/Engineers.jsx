@@ -4,13 +4,13 @@ import { makeEngineer } from "../lib";
 import { PlusIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 
 function Engineers() {
-  const { engineers, addEngineer, updateEngineer, removeEngineer } = useEngineerStore();
+  const { engineers, addEngineer, updateEngineer, removeEngineer } =
+    useEngineerStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEngineer, setEditingEngineer] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     weeklyHours: 40,
-    skills: "",
   });
 
   const nameInputRef = useRef(null);
@@ -26,7 +26,6 @@ function Engineers() {
     const engineerData = makeEngineer({
       name: formData.name,
       weeklyHours: Number(formData.weeklyHours),
-      skills: formData.skills,
     });
 
     if (editingEngineer) {
@@ -41,7 +40,6 @@ function Engineers() {
     setFormData({
       name: "",
       weeklyHours: 40,
-      skills: "",
     });
     setEditingEngineer(null);
     setIsModalOpen(false);
@@ -52,7 +50,6 @@ function Engineers() {
     setFormData({
       name: engineer.name,
       weeklyHours: engineer.weeklyHours,
-      skills: engineer.skills,
     });
     setIsModalOpen(true);
   };
@@ -81,7 +78,6 @@ function Engineers() {
                   </h3>
                   <div className="mt-1 text-sm text-gray-500">
                     <p>Weekly Hours: {engineer.weeklyHours}</p>
-                    <p>Skills: {engineer.skills}</p>
                   </div>
                 </div>
                 <div className="flex space-x-2">
@@ -140,18 +136,6 @@ function Engineers() {
                   min="0"
                   max="168"
                   required
-                />
-              </div>
-              <div>
-                <label className="form-label">Skills</label>
-                <input
-                  type="text"
-                  value={formData.skills}
-                  onChange={(e) =>
-                    setFormData({ ...formData, skills: e.target.value })
-                  }
-                  className="form-input"
-                  placeholder="Enter skills (comma separated)"
                 />
               </div>
               <div className="flex justify-end space-x-3 pt-4">

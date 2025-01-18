@@ -2,15 +2,25 @@ export function generateGanttMarkup(assignments, engineers) {
   if (!assignments?.length || !engineers?.length) {
     return `gantt
     dateFormat YYYY-MM-DD
-    title Project Schedule
+    title Resource Schedule
     section No Data
     No assignments found :2024-01-01, 1d`;
   }
 
   let markup = "gantt\n";
   markup += "    dateFormat YYYY-MM-DD\n";
-  markup += `    title Project Schedule\n`;
+  markup += "    title Resource Schedule\n";
+  markup += "    tickInterval 1week\n";
   markup += "    excludes weekends\n\n";
+
+  // Add quarter guidelines section
+  const today = new Date();
+  const currentQuarter = Math.floor(today.getMonth() / 3);
+  const quarterStart = new Date(today.getFullYear(), currentQuarter * 3, 1);
+  const quarterEnd = new Date(today.getFullYear(), (currentQuarter + 1) * 3, 0);
+
+  markup += "    section Quarter Start \n";
+  markup += `    s :milestone, ${quarterStart.toISOString().split("T")[0]}, 0d\n`;
 
   // Group by engineer
   engineers.forEach((engineer) => {
@@ -54,6 +64,9 @@ export function generateGanttMarkup(assignments, engineers) {
       markup += `    ${escapedProjectName}${percentageLabel} :${startDate}, ${duration}\n`;
     });
   });
+
+  markup += "    section Quarter End \n";
+  markup += `    e :milestone, ${quarterEnd.toISOString().split("T")[0]}, 0d\n\n`;
 
   return markup;
 }

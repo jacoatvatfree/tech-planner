@@ -1,21 +1,22 @@
-import React from 'react';
-import { useEngineerStore } from '../../store/engineerStore';
+import React from "react";
+import { useEngineerStore } from "../../store/engineerStore";
 
-export default function EngineerSelect({ selectedEngineers, onEngineerSelect }) {
+export default function EngineerSelect({
+  selectedEngineers,
+  onEngineerSelect,
+}) {
   const { engineers } = useEngineerStore();
 
   return (
     <div>
-      <label className="form-label">
-        Allocate Engineers
-      </label>
+      <label className="form-label">Allocate Engineers</label>
       <select
         multiple
         value={selectedEngineers}
         onChange={(e) => {
           const selectedEngineers = Array.from(
             e.target.selectedOptions,
-            (option) => option.value
+            (option) => option.value,
           );
           onEngineerSelect(selectedEngineers);
         }}

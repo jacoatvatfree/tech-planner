@@ -4,19 +4,27 @@ import EngineerSelect from "../engineers/EngineerSelect";
 import { format } from "date-fns";
 
 export default function ProjectForm({ onSubmit, editingProject, onCancel }) {
-  const [formData, setFormData] = useState(editingProject ? {
-    ...editingProject,
-    startAfter: editingProject.startAfter ? format(new Date(editingProject.startAfter), 'yyyy-MM-dd') : '',
-    endBefore: editingProject.endBefore ? format(new Date(editingProject.endBefore), 'yyyy-MM-dd') : ''
-  } : {
-    name: "",
-    description: "",
-    estimatedHours: 0,
-    startAfter: format(new Date(), "yyyy-MM-dd"),
-    endBefore: "",
-    priority: 3,
-    allocations: []
-  });
+  const [formData, setFormData] = useState(
+    editingProject
+      ? {
+          ...editingProject,
+          startAfter: editingProject.startAfter
+            ? format(new Date(editingProject.startAfter), "yyyy-MM-dd")
+            : "",
+          endBefore: editingProject.endBefore
+            ? format(new Date(editingProject.endBefore), "yyyy-MM-dd")
+            : "",
+        }
+      : {
+          name: "",
+          description: "",
+          estimatedHours: 0,
+          startAfter: format(new Date(), "yyyy-MM-dd"),
+          endBefore: "",
+          priority: 3,
+          allocations: [],
+        },
+  );
 
   const nameInputRef = useRef(null);
 
@@ -40,11 +48,7 @@ export default function ProjectForm({ onSubmit, editingProject, onCancel }) {
       allocations: formData.allocations,
     };
 
-    if (editingProject) {
-      updateProject(editingProject.id, projectData);
-    } else {
-      onSubmit(projectData);
-    }
+    onSubmit(projectData);
     resetForm();
   };
 
@@ -56,91 +60,129 @@ export default function ProjectForm({ onSubmit, editingProject, onCancel }) {
       startAfter: format(new Date(), "yyyy-MM-dd"),
       endBefore: "",
       priority: 3,
-      allocations: []
+      allocations: [],
     });
     onCancel();
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form
+      onSubmit={handleSubmit}
+      className="bg-white rounded-lg p-6 max-w-2xl w-full space-y-4"
+    >
+      <h3 className="text-lg font-medium mb-4">
+        {editingProject ? "Edit Project" : "Add Project"}
+      </h3>
       <div>
-        <label className="form-label">Name</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Name
+        </label>
         <input
           ref={nameInputRef}
           type="text"
           value={formData.name}
-          onChange={(e) =>
-            setFormData({ ...formData, name: e.target.value })
-          }
-          className="form-input"
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          className="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
           placeholder="Enter project name"
           required
         />
       </div>
 
       <div>
-        <label className="form-label">Description</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Description
+        </label>
         <textarea
           value={formData.description}
           onChange={(e) =>
             setFormData({ ...formData, description: e.target.value })
           }
-          className="form-textarea"
+          className="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
           rows={3}
           placeholder="Enter project description"
         />
       </div>
 
       <div>
-        <label className="form-label">Estimated Hours</label>
-        <input
-          type="number"
-          value={formData.estimatedHours}
-          onChange={(e) =>
-            setFormData({
-              ...formData,
-              estimatedHours: parseInt(e.target.value),
-            })
-          }
-          className="form-input"
-          min="0"
-          placeholder="Enter estimated hours"
-          required
-        />
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Estimated Hours
+        </label>
+        <div className="flex items-center gap-2 w-full">
+          <input
+            type="number"
+            value={formData.estimatedHours}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                estimatedHours: parseInt(e.target.value),
+              })
+            }
+            className="form-input mt-1 block w-1/4 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            min="0"
+            required
+          />
+          <div className="flex flex-wrap gap-2 mt-1 w-3/4">
+            {[
+              { label: "3d", hours: 24 },
+              { label: "1w", hours: 40 },
+              { label: "2w", hours: 80 },
+              { label: "3w", hours: 120 },
+              { label: "4w", hours: 160 },
+              { label: "6w", hours: 240 },
+            ].map(({ label, hours }) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() =>
+                  setFormData({ ...formData, estimatedHours: hours })
+                }
+                className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div>
-        <label className="form-label">Start After</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Start After
+        </label>
         <input
           type="date"
           value={formData.startAfter}
           onChange={(e) =>
             setFormData({ ...formData, startAfter: e.target.value })
           }
-          className="form-input"
+          className="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
         />
       </div>
 
       <div>
-        <label className="form-label">End Before</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          End Before
+        </label>
         <input
           type="date"
           value={formData.endBefore}
           onChange={(e) =>
             setFormData({ ...formData, endBefore: e.target.value })
           }
-          className="form-input"
+          className="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
         />
       </div>
 
       <div>
-        <label className="form-label">Priority</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Priority
+        </label>
         <select
           value={formData.priority}
           onChange={(e) =>
             setFormData({ ...formData, priority: parseInt(e.target.value) })
           }
-          className="form-select"
+          className="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
         >
           <option value="1">High</option>
           <option value="2">Medium</option>
@@ -149,7 +191,7 @@ export default function ProjectForm({ onSubmit, editingProject, onCancel }) {
       </div>
 
       <EngineerSelect
-        selectedEngineers={formData.allocations.map(a => a.engineerId)}
+        selectedEngineers={formData.allocations.map((a) => a.engineerId)}
         onEngineerSelect={(selectedEngineers) => {
           const startDate = formData.startAfter
             ? new Date(formData.startAfter)
@@ -157,18 +199,15 @@ export default function ProjectForm({ onSubmit, editingProject, onCancel }) {
           const endDate = formData.endBefore
             ? new Date(formData.endBefore)
             : new Date(
-                startDate.getTime() +
-                  formData.estimatedHours * 60 * 60 * 1000,
+                startDate.getTime() + formData.estimatedHours * 60 * 60 * 1000,
               );
 
-          const newAllocations = selectedEngineers.map(
-            (engineerId) => ({
-              engineerId,
-              startDate,
-              endDate,
-              percentage: 100,
-            }),
-          );
+          const newAllocations = selectedEngineers.map((engineerId) => ({
+            engineerId,
+            startDate,
+            endDate,
+            percentage: 100,
+          }));
 
           setFormData({
             ...formData,

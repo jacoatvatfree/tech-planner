@@ -5,10 +5,11 @@ export function calculateSchedule(projects, engineers) {
 
   // Find the earliest start date among all projects
   const referenceDate = new Date(
-    Math.min(...projects
-      .filter(p => p.startAfter)
-      .map(p => new Date(p.startAfter).getTime())
-    ) || new Date().getTime()
+    Math.min(
+      ...projects
+        .filter((p) => p.startAfter)
+        .map((p) => new Date(p.startAfter).getTime()),
+    ) || new Date().getTime(),
   );
 
   // Set to start of the week
@@ -19,7 +20,7 @@ export function calculateSchedule(projects, engineers) {
   const engineerSchedules = {};
 
   // Initialize engineer schedules
-  engineers.forEach(eng => {
+  engineers.forEach((eng) => {
     engineerSchedules[eng.id] = [];
   });
 
@@ -35,22 +36,29 @@ export function calculateSchedule(projects, engineers) {
     }
 
     // Calculate project duration based on allocations
-    const projectStartDate = project.startAfter ? new Date(project.startAfter) : referenceDate;
+    const projectStartDate = project.startAfter
+      ? new Date(project.startAfter)
+      : referenceDate;
     let actualStartDate = new Date(projectStartDate);
 
     // Check if any allocated engineers are busy
     for (const allocation of project.allocations) {
-      const engineerAssignments = engineerSchedules[allocation.engineerId] || [];
-      
+      const engineerAssignments =
+        engineerSchedules[allocation.engineerId] || [];
+
       // Find the latest end date of higher priority projects
       const latestConflict = engineerAssignments
-        .filter(a => {
-          const conflictingProject = sortedProjects.find(p => p.id === a.projectId);
-          return conflictingProject && conflictingProject.priority < project.priority;
+        .filter((a) => {
+          const conflictingProject = sortedProjects.find(
+            (p) => p.id === a.projectId,
+          );
+          return (
+            conflictingProject && conflictingProject.priority < project.priority
+          );
         })
         .reduce((latest, assignment) => {
           const endDate = new Date(assignment.startDate);
-          endDate.setDate(endDate.getDate() + (assignment.weeksNeeded * 7));
+          endDate.setDate(endDate.getDate() + assignment.weeksNeeded * 7);
           return endDate > latest ? endDate : latest;
         }, projectStartDate);
 
@@ -62,7 +70,7 @@ export function calculateSchedule(projects, engineers) {
 
     // Create assignments for each allocation
     for (const allocation of project.allocations) {
-      const engineer = engineers.find(e => e.id === allocation.engineerId);
+      const engineer = engineers.find((e) => e.id === allocation.engineerId);
       if (!engineer) continue;
 
       const weeklyCapacity = engineer.weeklyHours || 40;
@@ -74,7 +82,10 @@ export function calculateSchedule(projects, engineers) {
         engineerId: engineer.id,
         startDate: actualStartDate,
         weeksNeeded,
-        percentage: Math.min(100, (project.estimatedHours / (weeksNeeded * weeklyCapacity)) * 100)
+        percentage: Math.min(
+          100,
+          (project.estimatedHours / (weeksNeeded * weeklyCapacity)) * 100,
+        ),
       };
 
       assignments.push(assignment);
