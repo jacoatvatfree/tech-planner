@@ -24,17 +24,27 @@ export function calculateSchedule(projects, engineers) {
 
   // Schedule each project
   sortedProjects.forEach((project) => {
-    if (!project.assignedEngineers?.length) return;
+    if (!project.allocations?.length || !project.estimatedHours) {
+      console.warn(
+        `Project ${project.name} skipped - missing allocations or hours`,
+      );
+      return;
+    }
+
+    // Get unique engineers from allocations
+    const projectEngineers = [
+      ...new Set(project.allocations.map((a) => a.engineerId)),
+    ];
 
     // Calculate hours per engineer for this project
     const hoursPerEngineer = Math.ceil(
-      project.estimatedHours / project.assignedEngineers.length,
+      project.estimatedHours / projectEngineers.length,
     );
 
     // Find the earliest week where all assigned engineers have availability
     const startWeek = Math.max(
-      ...project.assignedEngineers.map(
-        (engId) => engineerHours[engId].currentWeek,
+      ...projectEngineers.map(
+        (engId) => engineerHours[engId]?.currentWeek || 0,
       ),
     );
 
@@ -42,7 +52,13 @@ export function calculateSchedule(projects, engineers) {
     const weeksNeeded = calculateWeeksNeeded(hoursPerEngineer);
 
     // Record assignments and update engineer hours
-    project.assignedEngineers.forEach((engId) => {
+    projectEngineers.forEach((engId) => {
+      // Check if engineer exists
+      if (!engineerHours[engId]) {
+        console.warn(`Engineer ${engId} not found for project ${project.name}`);
+        return;
+      }
+
       assignments.push({
         projectName: project.name,
         engineerId: engId,

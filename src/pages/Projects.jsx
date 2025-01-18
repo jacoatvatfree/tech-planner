@@ -23,7 +23,7 @@ function Projects() {
     startAfter: format(new Date(), "yyyy-MM-dd"),
     endBefore: "",
     priority: projects.length + 1,
-    assignedEngineers: [],
+    allocations: [],
   });
 
   const handleSubmit = (e) => {
@@ -37,7 +37,7 @@ function Projects() {
         priority: Number(formData.priority),
       }),
       description: formData.description,
-      assignedEngineers: formData.assignedEngineers.map(String), // Ensure IDs are strings
+      allocations: formData.allocations,
     };
 
     if (editingProject) {
@@ -75,7 +75,7 @@ function Projects() {
         ? format(new Date(project.endBefore), "yyyy-MM-dd")
         : "",
       priority: project.priority,
-      assignedEngineers: project.assignedEngineers || [],
+      allocations: project.allocations || [],
     });
     setIsModalOpen(true);
   };
@@ -169,6 +169,17 @@ function Projects() {
                             : "Not set"}
                         </p>
                         <p>
+                          Allocated Engineers:{" "}
+                          {project.allocations?.length > 0
+                            ? engineers
+                                .filter((eng) =>
+                                  project.allocations.some(
+                                    (alloc) => alloc.engineerId === eng.id,
+                                  ),
+                                )
+                                .map((eng) => eng.name)
+                                .join(", ")
+                            : "None"}
                           Assigned Engineers:{" "}
                           {project.assignedEngineers?.length > 0
                             ? engineers
@@ -282,6 +293,52 @@ function Projects() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Allocate Engineers
+                </label>
+                <select
+                  multiple
+                  value={formData.allocations.map((a) => a.engineerId)}
+                  onChange={(e) => {
+                    const selectedEngineers = Array.from(
+                      e.target.selectedOptions,
+                      (option) => option.value,
+                    );
+
+                    const startDate = formData.startAfter
+                      ? new Date(formData.startAfter)
+                      : new Date();
+                    const endDate = formData.endBefore
+                      ? new Date(formData.endBefore)
+                      : new Date(
+                          startDate.getTime() +
+                            formData.estimatedHours * 60 * 60 * 1000,
+                        );
+
+                    const newAllocations = selectedEngineers.map(
+                      (engineerId) => ({
+                        engineerId,
+                        startDate,
+                        endDate,
+                        percentage: 100,
+                      }),
+                    );
+
+                    setFormData({
+                      ...formData,
+                      allocations: newAllocations,
+                    });
+                  }}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                >
+                  {engineers.map((engineer) => (
+                    <option key={engineer.id} value={engineer.id}>
+                      {engineer.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">
                   Assigned Engineers
