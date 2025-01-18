@@ -59,9 +59,22 @@ export function generateGanttMarkup(assignments, engineers) {
         assignment.percentage < 100
           ? ` (${Math.round(assignment.percentage)}%)`
           : "";
-      const duration = `${assignment.weeksNeeded || 1}w`;
+      // Get all allocations for this project
+      const projectAssignments = assignments.filter(
+        (a) => a.projectId === assignment.projectId,
+      );
+      const totalWeeklyHours = projectAssignments.reduce((sum, a) => {
+        const eng = engineers.find((e) => e.id === a.engineerId);
+        if (!eng) return sum;
+        const percentage = a.percentage || 100;
+        return sum + (eng.weeklyHours || 40) * (percentage / 100);
+      }, 0);
 
-      markup += `    ${escapedProjectName}${percentageLabel} :${startDate}, ${duration}\n`;
+      // Always convert weeks to working days (5 days per week)
+      const days = Math.max(1, Math.ceil(assignment.weeksNeeded * 5));
+      const durationStr = `${days}d`;
+
+      markup += `    ${escapedProjectName}${percentageLabel} :${startDate}, ${durationStr}\n`;
     });
   });
 

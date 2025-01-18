@@ -51,15 +51,13 @@ export default function GanttView() {
         <h2 className="text-2xl font-bold mb-4">Resource Schedule</h2>
         <div className="mb-6 bg-gray-50 p-4 rounded-lg">
           <h3 className="text-lg font-medium mb-2">Summary</h3>
-          <div className="text-sm text-gray-600 space-y-2">
+          <div className="text-sm text-gray-600 space-y-2 grid grid-cols-4">
             <div>
               <p>Total Projects: {projects.length}</p>
               <p>Total Engineers: {engineers.length}</p>
             </div>
-            <div className="pt-2">
-              <p className="font-medium">
-                Resource Usage (quarterly allocation):
-              </p>
+            <div className="">
+              <p className="font-medium">Resource Usage:</p>
               {engineers.map((engineer) => {
                 const engineerAssignments = assignments.filter(
                   (a) => a.engineerId === engineer.id,
@@ -128,19 +126,6 @@ export default function GanttView() {
       </div>
 
       <div className="bg-white rounded-lg shadow p-6 space-y-4">
-        {/*   <h2 className="text-2xl font-bold">Debug Information</h2> */}
-        {/**/}
-        {/*   <details className="border rounded-lg p-4"> */}
-        {/*     <summary className="font-medium cursor-pointer">Store Data</summary> */}
-        {/*     <pre className="mt-4 p-4 bg-gray-50 rounded overflow-auto max-h-96 text-sm"> */}
-        {/*       {JSON.stringify({ projects, engineers }, null, 2)} */}
-        {/*     </pre> */}
-        {/*   </details> */}
-        {/**/}
-        {/*   <details className="border rounded-lg p-4"> */}
-        {/*     <summary className="font-medium cursor-pointer"> */}
-        {/*       Generated Markup */}
-        {/*     </summary> */}
         <div className="relative">
           <button
             onClick={() => navigator.clipboard.writeText(markup)}
@@ -152,7 +137,14 @@ export default function GanttView() {
             {markup}
           </pre>
         </div>
-        {/*   </details> */}
+        <h3 className="text-xl font-bold">Debug Information</h3>
+
+        <details className="border rounded-lg p-4">
+          <summary className="font-medium cursor-pointer">Store Data</summary>
+          <pre className="mt-4 p-4 bg-gray-50 rounded overflow-auto max-h-96 text-sm">
+            {JSON.stringify({ projects, engineers }, null, 2)}
+          </pre>
+        </details>
       </div>
     </div>
   );

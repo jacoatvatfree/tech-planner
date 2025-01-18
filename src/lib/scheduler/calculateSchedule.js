@@ -8,19 +8,15 @@ export function calculateSchedule(projects, engineers) {
   const engineerAvailability = {};
   engineers.forEach((eng) => (engineerAvailability[eng.id] = 0));
 
-  // Helper to get next Monday for a date
-  const getNextMonday = (date) => {
+  // Helper to normalize date to start of day
+  const normalizeDate = (date) => {
     const result = new Date(date);
     result.setHours(0, 0, 0, 0);
-    while (result.getDay() !== 1) {
-      // 1 = Monday
-      result.setDate(result.getDate() + 1);
-    }
     return result;
   };
 
-  // Find earliest startAfter date from all projects, snapped to Monday
-  const baseDate = getNextMonday(
+  // Find earliest startAfter date from all projects
+  const baseDate = normalizeDate(
     projects.reduce((earliest, project) => {
       if (!project.startAfter) return earliest;
       const projectStart = new Date(project.startAfter);
@@ -91,7 +87,17 @@ export function calculateSchedule(projects, engineers) {
         startWeek: latestStartWeek,
         weeksNeeded,
         percentage: allocation.percentage || 100,
-        startDate: getNextMonday(
+        startDate: normalizeDate(
+          new Date(
+            Math.max(
+              project.startAfter
+                ? new Date(project.startAfter).getTime()
+                : baseDate.getTime(),
+              baseDate.getTime() + latestStartWeek * 7 * 24 * 60 * 60 * 1000,
+            ),
+          ),
+        ),
+        startDate: normalizeDate(
           new Date(
             Math.max(
               project.startAfter
