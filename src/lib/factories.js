@@ -17,38 +17,6 @@ export const makeEngineer = ({
 /**
  * Create a new project
  */
-<<<<<<< HEAD
-export const makeProject = ({
-  name,
-  estimatedHours,
-  startAfter = null,
-  endBefore = null,
-  priority = 3,
-  allocations = []
-}) => ({
-  id: uuidv4(),
-  name,
-  estimatedHours,
-  startAfter,
-  endBefore,
-  priority,
-  allocations
-});
-=======
-export const makeAllocation = ({
-  projectId,
-  engineerId,
-  startDate,
-  endDate,
-  percentage = 100
-}) => ({
-  projectId,
-  engineerId,
-  startDate: new Date(startDate),
-  endDate: new Date(endDate),
-  percentage
-});
-
 export const makeProject = ({
   name,
   description = "",
@@ -67,7 +35,23 @@ export const makeProject = ({
   priority,
   allocations
 });
->>>>>>> Snippet
+
+/**
+ * Create a new allocation
+ */
+export const makeAllocation = ({
+  projectId,
+  engineerId,
+  startDate,
+  endDate,
+  percentage = 100
+}) => ({
+  projectId,
+  engineerId,
+  startDate: new Date(startDate),
+  endDate: new Date(endDate),
+  percentage
+});
 
 /**
  * Create a new schedule

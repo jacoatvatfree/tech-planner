@@ -1,4 +1,3 @@
-
 const handleSubmit = (e) => {
   e.preventDefault();
   const project = makeProject({

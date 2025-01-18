@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { useProjectStore } from "../store/projectStore";
 import { useEngineerStore } from "../store/engineerStore";
 import { makeProject } from "../lib";
@@ -11,8 +11,7 @@ import {
 import { format } from "date-fns";
 
 function Projects() {
-  const { projects, addProject, updateProject, removeProject } =
-    useProjectStore();
+  const { projects, addProject, updateProject, removeProject, allocateEngineer } = useProjectStore();
   const { engineers } = useEngineerStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
@@ -22,8 +21,8 @@ function Projects() {
     estimatedHours: 0,
     startAfter: format(new Date(), "yyyy-MM-dd"),
     endBefore: "",
-    priority: projects.length + 1,
-    allocations: [],
+    priority: 3,
+    allocations: []
   });
 
   const handleSubmit = (e) => {
@@ -48,6 +47,15 @@ function Projects() {
     resetForm();
   };
 
+  const handleAllocateEngineer = (projectId, engineerId) => {
+    if (!engineerId) return;
+    
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 30); // Default to 30 days allocation
+    allocateEngineer(projectId, engineerId, startDate, endDate);
+  };
+
   const resetForm = () => {
     setFormData({
       name: "",
@@ -56,7 +64,7 @@ function Projects() {
       startAfter: format(new Date(), "yyyy-MM-dd"),
       endBefore: "",
       priority: 3,
-      assignedEngineers: [],
+      allocations: []
     });
     setEditingProject(null);
     setIsModalOpen(false);
@@ -78,6 +86,12 @@ function Projects() {
       allocations: project.allocations || [],
     });
     setIsModalOpen(true);
+  };
+
+  // Helper function to get engineer name from ID
+  const getEngineerName = (engineerId) => {
+    const engineer = engineers.find(e => e.id === engineerId);
+    return engineer ? engineer.name : 'Unknown Engineer';
   };
 
   return (
@@ -130,7 +144,7 @@ function Projects() {
         >
           {[...projects]
             .sort((a, b) => a.priority - b.priority)
-            .map((project, index) => (
+            .map((project) => (
               <li
                 key={project.id}
                 draggable="true"
@@ -168,30 +182,36 @@ function Projects() {
                             ? format(new Date(project.endBefore), "MMM d, yyyy")
                             : "Not set"}
                         </p>
-                        <p>
-                          Allocated Engineers:{" "}
-                          {project.allocations?.length > 0
-                            ? engineers
-                                .filter((eng) =>
-                                  project.allocations.some(
-                                    (alloc) => alloc.engineerId === eng.id,
-                                  ),
-                                )
-                                .map((eng) => eng.name)
-                                .join(", ")
-                            : "None"}
-                          Assigned Engineers:{" "}
-                          {project.assignedEngineers?.length > 0
-                            ? engineers
-                                .filter((eng) =>
-                                  project.assignedEngineers.includes(
-                                    String(eng.id),
-                                  ),
-                                )
-                                .map((eng) => eng.name)
-                                .join(", ")
-                            : "None"}
-                        </p>
+                        
+                        {/* Engineer allocation */}
+                        <div className="mt-2">
+                          <select 
+                            onChange={(e) => handleAllocateEngineer(project.id, e.target.value)}
+                            className="border rounded p-1"
+                            value=""
+                          >
+                            <option value="">Assign Engineer...</option>
+                            {engineers.map(engineer => (
+                              <option key={engineer.id} value={engineer.id}>
+                                {engineer.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Show current allocations */}
+                        {project.allocations?.length > 0 && (
+                          <div className="mt-2">
+                            <p className="font-semibold">Allocated Engineers:</p>
+                            <ul className="list-disc list-inside">
+                              {project.allocations.map((allocation, index) => (
+                                <li key={index}>
+                                  {getEngineerName(allocation.engineerId)}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -330,31 +350,6 @@ function Projects() {
                       allocations: newAllocations,
                     });
                   }}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                >
-                  {engineers.map((engineer) => (
-                    <option key={engineer.id} value={engineer.id}>
-                      {engineer.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Assigned Engineers
-                </label>
-                <select
-                  multiple
-                  value={formData.assignedEngineers}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      assignedEngineers: Array.from(
-                        e.target.selectedOptions,
-                        (option) => String(option.value),
-                      ),
-                    })
-                  }
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 >
                   {engineers.map((engineer) => (
