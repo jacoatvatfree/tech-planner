@@ -1,53 +1,114 @@
 export function calculateSchedule(projects, engineers) {
   if (!projects?.length || !engineers?.length) {
-    return [];
+    return { assignments: [], referenceDate: new Date() };
   }
+  debugger;
+  // Find the earliest start date among all projects
+  const referenceDate = new Date(
+    Math.min(...projects.map((p) => new Date(p.startAfter).getTime())),
+  );
+  // Set to start of the week
+  referenceDate.setHours(0, 0, 0, 0);
+  referenceDate.setDate(referenceDate.getDate() - referenceDate.getDay());
 
   const assignments = [];
-  let currentWeek = 0;
+  const engineerSchedules = {};
 
-  // Sort projects by priority (lower number = higher priority)
-  const sortedProjects = [...projects].sort((a, b) => a.priority - b.priority);
+  // Initialize engineer schedules
+  engineers.forEach((eng) => {
+    engineerSchedules[eng.id] = [];
+  });
 
-  for (const project of sortedProjects) {
-    if (!project.allocations?.length || !project.estimatedHours) {
-      console.warn(`Project ${project.name} skipped - missing allocations or hours`);
-      continue;
-    }
+  // Group projects by engineer
+  const engineerProjects = {};
+  engineers.forEach((engineer) => {
+    engineerProjects[engineer.id] = projects
+      .filter((project) =>
+        project.allocations?.some(
+          (allocation) => allocation.engineerId === engineer.id,
+        ),
+      )
+      .sort((a, b) => a.priority - b.priority);
+  });
 
-    // Calculate total allocation percentage for this project
-    const totalAllocationPercentage = project.allocations.reduce(
-      (sum, allocation) => sum + (allocation.percentage || 100),
-      0
-    );
+  // Keep track of scheduled projects to avoid double scheduling
+  const scheduledProjects = new Set();
 
-    // Calculate how many weeks needed based on total allocation percentage
-    const weeksNeeded = Math.ceil(
-      project.estimatedHours / (40 * (totalAllocationPercentage / 100))
-    );
+  // Process each project
+  while (
+    Object.values(engineerProjects).some((projects) => projects.length > 0)
+  ) {
+    // Try to schedule one project for each engineer
+    for (const engineer of engineers) {
+      const projectsForEngineer = engineerProjects[engineer.id];
 
-    // Add an assignment for each allocation
-    project.allocations.forEach(allocation => {
-      const engineer = engineers.find(e => e.id === allocation.engineerId);
-      if (!engineer) return;
+      if (projectsForEngineer.length === 0) continue;
 
-      assignments.push({
-        projectId: project.id,
-        projectName: project.name,
-        engineerId: engineer.id,
-        startWeek: currentWeek,
-        weeksNeeded,
-        percentage: allocation.percentage || 100
+      // Get the next unscheduled project for this engineer
+      const projectIndex = projectsForEngineer.findIndex(
+        (p) => !scheduledProjects.has(p.id),
+      );
+      if (projectIndex === -1) continue;
+
+      const project = projectsForEngineer[projectIndex];
+
+      // Calculate weeks from reference date
+      const projectStartDate = new Date(project.startAfter);
+      const startWeek = Math.floor(
+        (projectStartDate.getTime() - referenceDate.getTime()) /
+          (7 * 24 * 60 * 60 * 1000),
+      );
+
+      // Calculate weeks needed based on estimated hours (assuming 40-hour weeks)
+      const weeksNeeded = Math.ceil(project.estimatedHours / 40);
+
+      // Check if the slot is available for this engineer
+      const engineerSchedule = engineerSchedules[engineer.id];
+      const slotFound = !engineerSchedule.some((assignment) => {
+        const assignmentEnd = assignment.startWeek + assignment.weeksNeeded;
+        const projectEnd = startWeek + weeksNeeded;
+        return startWeek < assignmentEnd && projectEnd > assignment.startWeek;
       });
-    });
 
-    currentWeek += weeksNeeded;
+      // If we found a slot, schedule the project
+      if (slotFound) {
+        project.allocations.forEach((allocation) => {
+          const allocatedEngineer = engineers.find(
+            (e) => e.id === allocation.engineerId,
+          );
+          if (!allocatedEngineer) return;
+
+          const assignment = {
+            projectId: project.id,
+            projectName: project.name,
+            engineerId: allocation.engineerId,
+            startWeek: startWeek,
+            weeksNeeded,
+            percentage: allocation.percentage || 100,
+          };
+
+          assignments.push(assignment);
+          engineerSchedules[allocation.engineerId].push(assignment);
+        });
+
+        // Mark project as scheduled
+        scheduledProjects.add(project.id);
+
+        // Remove this project from all engineer project lists
+        Object.keys(engineerProjects).forEach((engId) => {
+          engineerProjects[engId] = engineerProjects[engId].filter(
+            (p) => p.id !== project.id,
+          );
+        });
+      }
+    }
   }
 
-  return assignments;
+  return { assignments, referenceDate };
 }
 
-export function generateMermaidGantt(assignments, engineers) {
+export function generateMermaidGantt(projects, engineers) {
+  const { assignments, referenceDate } = calculateSchedule(projects, engineers);
   if (!assignments?.length || !engineers?.length) {
     return `gantt
     dateFormat YYYY-MM-DD
@@ -55,6 +116,9 @@ export function generateMermaidGantt(assignments, engineers) {
     section No Data
     No assignments found :2024-01-01, 1d`;
   }
+
+  // Find the earliest start week
+  const earliestStartWeek = Math.min(...assignments.map((a) => a.startWeek));
 
   let mermaidMarkup = "gantt\n";
   mermaidMarkup += "    dateFormat YYYY-MM-DD\n";
@@ -64,26 +128,29 @@ export function generateMermaidGantt(assignments, engineers) {
   // Group by engineer
   engineers.forEach((engineer) => {
     if (!engineer?.name) return;
-    
+
     mermaidMarkup += `    section ${engineer.name}\n`;
 
     const engineerAssignments = assignments.filter(
-      (a) => a.engineerId === engineer.id
+      (a) => a.engineerId === engineer.id,
     );
-    
+
     if (engineerAssignments.length === 0) {
-      mermaidMarkup += `    No assignments :2024-01-01, 1d\n`;
+      mermaidMarkup += `    No assignments :${new Date().toISOString().split("T")[0]}}, 1d\n`;
       return;
     }
 
     engineerAssignments.forEach((assignment) => {
-      // Ensure we have valid dates
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() + assignment.startWeek * 7);
+      // Calculate start date relative to reference date
+      const startDate = new Date(referenceDate);
+      startDate.setDate(
+        referenceDate.getDate() +
+          (assignment.startWeek - earliestStartWeek) * 7,
+      );
       const formattedStart = startDate.toISOString().split("T")[0];
 
       // Escape special characters in project names
-      const escapedProjectName = assignment.projectName.replace(/[:#]/g, ' ');
+      const escapedProjectName = assignment.projectName.replace(/[:#]/g, " ");
 
       mermaidMarkup += `    ${escapedProjectName}    :${formattedStart}, ${assignment.weeksNeeded}w\n`;
     });
