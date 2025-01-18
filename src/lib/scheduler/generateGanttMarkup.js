@@ -23,7 +23,8 @@ export function generateGanttMarkup(assignments, engineers) {
     );
     
     if (engineerAssignments.length === 0) {
-      markup += `    No assignments :2024-01-01, 1d\n`;
+      const today = new Date().toISOString().split("T")[0];
+      markup += `    No current assignments :${today}, 1d\n`;
       return;
     }
 
