@@ -18,10 +18,10 @@ export function generateGanttMarkup(assignments, engineers) {
 
     markup += `    section ${engineer.name}\n`;
 
-    // Get all projects assigned to this engineer
-    const engineerAssignments = assignments.filter(
-      (a) => a.engineerId === engineer.id,
-    );
+    // Get all projects assigned to this engineer and sort by priority
+    const engineerAssignments = assignments
+      .filter((a) => a.engineerId === engineer.id)
+      .sort((a, b) => a.startWeek - b.startWeek);
 
     if (engineerAssignments.length === 0) {
       markup += `    No assignments :${new Date().toISOString().split("T")[0]}, 1d\n`;

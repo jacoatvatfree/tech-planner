@@ -19,15 +19,26 @@ export function calculateSchedule(projects, engineers) {
       continue;
     }
 
-    // Calculate total allocation percentage for this project
-    const totalAllocationPercentage = project.allocations.reduce(
-      (sum, allocation) => sum + (allocation.percentage || 100),
-      0,
-    );
+    // Calculate total hours per week available for this project based on allocations
+    const hoursPerWeek = project.allocations.reduce((sum, allocation) => {
+      const engineer = engineers.find((e) => e.id === allocation.engineerId);
+      if (!engineer) return sum;
 
-    // Calculate how many weeks needed based on total allocation percentage
-    const weeksNeeded = Math.ceil(
-      project.estimatedHours / (40 * (totalAllocationPercentage / 100)),
+      const percentage = allocation.percentage || 100;
+      // Use engineer's actual weekly hours * their allocation percentage
+      const engineerWeeklyHours = engineer.weeklyHours || 40; // fallback to 40 if not specified
+      return sum + engineerWeeklyHours * (percentage / 100);
+    }, 0);
+
+    // Calculate weeks needed based on total available hours per week
+    const weeksNeeded = Math.ceil(project.estimatedHours / hoursPerWeek);
+
+    // Find the latest available start week among all allocated engineers
+    const latestStartWeek = Math.max(
+      ...project.allocations.map((allocation) => {
+        const engineer = engineers.find((e) => e.id === allocation.engineerId);
+        return engineer ? engineerAvailability[engineer.id] : 0;
+      }),
     );
 
     // Add an assignment for each allocation
@@ -35,21 +46,20 @@ export function calculateSchedule(projects, engineers) {
       const engineer = engineers.find((e) => e.id === allocation.engineerId);
       if (!engineer) return;
 
-      // Get when this engineer is next available
-      const startWeek = engineerAvailability[engineer.id];
-
       assignments.push({
         projectId: project.id,
         projectName: project.name,
         engineerId: engineer.id,
-        startWeek,
+        startWeek: latestStartWeek,
         weeksNeeded,
         percentage: allocation.percentage || 100,
-        startDate: new Date(Date.now() + startWeek * 7 * 24 * 60 * 60 * 1000),
+        startDate: new Date(
+          Date.now() + latestStartWeek * 7 * 24 * 60 * 60 * 1000,
+        ),
       });
 
       // Update when this engineer will be available next
-      engineerAvailability[engineer.id] = startWeek + weeksNeeded;
+      engineerAvailability[engineer.id] = latestStartWeek + weeksNeeded;
     });
   }
 
