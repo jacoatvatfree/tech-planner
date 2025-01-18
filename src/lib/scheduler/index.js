@@ -1,2 +1,2 @@
-export { calculateSchedule } from './calculateSchedule';
-export { generateMermaidGantt } from './generateGanttMarkup';
+export { calculateSchedule } from "./calculateSchedule";
+export { generateGanttMarkup } from "./generateGanttMarkup";
