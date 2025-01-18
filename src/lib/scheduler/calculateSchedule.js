@@ -15,6 +15,21 @@ export function calculateSchedule(projects, engineers) {
     return result;
   };
 
+  // Helper to check if date is a weekend
+  const isWeekend = (date) => {
+    const day = date.getDay();
+    return day === 0 || day === 6; // 0 is Sunday, 6 is Saturday
+  };
+
+  // Helper to get next weekday
+  const getNextWeekday = (date) => {
+    const result = new Date(date);
+    while (isWeekend(result)) {
+      result.setDate(result.getDate() + 1);
+    }
+    return result;
+  };
+
   // Find earliest startAfter date from all projects
   const baseDate = normalizeDate(
     projects.reduce((earliest, project) => {
@@ -121,6 +136,9 @@ export function calculateSchedule(projects, engineers) {
             ),
           );
 
+      // Ensure initial start date is a weekday
+      startDate = getNextWeekday(startDate);
+
       // Keep moving the date forward until we find a slot with enough capacity
       while (true) {
         const currentWorkload = getEngineerWorkload(startDate);
@@ -131,8 +149,10 @@ export function calculateSchedule(projects, engineers) {
           break;
         }
 
-        // Move to the next day
-        startDate.setDate(startDate.getDate() + 1);
+        // Move to the next weekday
+        do {
+          startDate.setDate(startDate.getDate() + 1);
+        } while (isWeekend(startDate));
 
         // If we're moving past any project end dates, we need to recalculate
         const endingProjects = assignments
@@ -155,7 +175,7 @@ export function calculateSchedule(projects, engineers) {
       if (project.startAfter) {
         const projectStartAfter = new Date(project.startAfter);
         if (startDate < projectStartAfter) {
-          startDate = projectStartAfter;
+          startDate = getNextWeekday(projectStartAfter);
         }
       }
 

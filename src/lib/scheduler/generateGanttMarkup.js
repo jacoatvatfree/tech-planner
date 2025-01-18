@@ -26,7 +26,7 @@ export function generateGanttMarkup(assignments, engineers, projects) {
   engineers.forEach((engineer) => {
     if (!engineer?.name) return;
 
-    markup += `    section ${engineer.name}\n`;
+    markup += `\n    section ${engineer.name}\n`;
 
     // Get all projects assigned to this engineer and sort by priority
     const engineerAssignments = assignments
@@ -83,11 +83,12 @@ export function generateGanttMarkup(assignments, engineers, projects) {
       const days = Math.max(1, Math.ceil(project.estimatedHours / hoursPerDay));
       const durationStr = `${days}d`;
 
-      markup += `    ${escapedProjectName}${percentageLabel} :${startDate}, ${durationStr}\n`;
+      const shortId = assignment.projectId.substring(0, 8);
+      markup += `    ${escapedProjectName}${percentageLabel} :${shortId}, ${startDate}, ${durationStr}\n`;
     });
   });
 
-  markup += "    section Quarter End \n";
+  markup += "\n    section Quarter End \n";
   markup += `    e :milestone, ${quarterEnd.toISOString().split("T")[0]}, 0d\n\n`;
 
   return markup;
