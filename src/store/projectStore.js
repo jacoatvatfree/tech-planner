@@ -1,6 +1,11 @@
-import create from "zustand";
+import { create } from "zustand";
 
 const STORAGE_KEY = "projects_data";
+
+// Generate a stable string ID
+const generateId = () => {
+  return `project-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+};
 
 // Load initial state from localStorage
 const getInitialState = () => {
@@ -13,7 +18,7 @@ const useProjectStore = create((set) => ({
   addProject: (project) =>
     set((state) => {
       const newState = {
-        projects: [...state.projects, { ...project, id: Date.now() }],
+        projects: [...state.projects, { ...project, id: generateId() }],
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newState.projects));
       return newState;
@@ -43,4 +48,4 @@ const useProjectStore = create((set) => ({
     }),
 }));
 
-export default useProjectStore;
+export { useProjectStore };

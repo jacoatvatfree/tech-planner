@@ -15,7 +15,10 @@
     "@mermaid-js/mermaid-cli": "^11.4.2",
     "date-fns": "^2.30.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+<<<<<<< HEAD
+=======
+
+>>>>>>> Snippet
     "react-mermaid": "^0.1.3",
     "react-router-dom": "^6.15.0",
     "uuid": "^11.0.5",

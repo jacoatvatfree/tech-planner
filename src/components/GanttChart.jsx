@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from "react";
 import mermaid from "mermaid";
-import { format } from "date-fns";
+// import { format } from "date-fns";
 
-function GanttChart({ tasks }) {
+function GanttChart({ tasks, markup }) {
   const chartRef = useRef(null);
   const chartId = useRef(`mermaid-${Math.random().toString(36).substr(2, 9)}`);
 
@@ -32,10 +32,7 @@ function GanttChart({ tasks }) {
 
       if (mounted && chartRef.current) {
         try {
-          const { svg } = await mermaid.render(
-            chartId.current,
-            generateMermaidSyntax(),
-          );
+          const { svg } = await mermaid.render(chartId.current, markup);
           if (mounted && chartRef.current) {
             chartRef.current.innerHTML = svg;
           }
@@ -53,56 +50,56 @@ function GanttChart({ tasks }) {
         chartRef.current.innerHTML = "";
       }
     };
-  }, [tasks]);
+  }, [markup]);
 
   useEffect(() => {
     if (chartRef.current) {
       // Clear previous chart
-      chartRef.current.innerHTML = generateMermaidSyntax();
+      chartRef.current.innerHTML = markup;
       // Reinitialize mermaid parsing
       mermaid.contentLoaded();
     }
-  }, [tasks]);
+  }, [markup]);
 
-  const generateMermaidSyntax = () => {
-    const sections = {};
-
-    // Group tasks by engineers
-    tasks.forEach((task) => {
-      task.assignedEngineers.forEach((engineerId) => {
-        if (!sections[engineerId]) {
-          sections[engineerId] = [];
-        }
-        sections[engineerId].push(task);
-      });
-    });
-
-    let syntax = "gantt\n";
-    syntax += "dateFormat YYYY-MM-DD\n";
-    syntax += "title Resource Schedule\n\n";
-
-    // Add sections for each engineer
-    Object.entries(sections).forEach(([engineerId, engineerTasks]) => {
-      syntax += `section Engineer ${engineerId}\n`;
-
-      engineerTasks.forEach((task) => {
-        const startDate = format(new Date(task.start_date), "yyyy-MM-dd");
-        const duration = `${task.duration}d`;
-        const progress = task.progress || 0;
-        const allocation = task.allocation;
-
-        // Color coding based on allocation
-        const color =
-          allocation > 100 ? "crit" : allocation < 80 ? "active" : "done";
-
-        syntax += `${task.text} :${color}, ${startDate}, ${duration}\n`;
-      });
-
-      syntax += "\n";
-    });
-
-    return syntax;
-  };
+  // const generateMermaidSyntax = () => {
+  //   const sections = {};
+  //
+  //   // Group tasks by engineers
+  //   tasks.forEach((task) => {
+  //     task.assignedEngineers.forEach((engineerId) => {
+  //       if (!sections[engineerId]) {
+  //         sections[engineerId] = [];
+  //       }
+  //       sections[engineerId].push(task);
+  //     });
+  //   });
+  //
+  //   let syntax = "gantt\n";
+  //   syntax += "dateFormat YYYY-MM-DD\n";
+  //   syntax += "title Resource Schedule\n\n";
+  //
+  //   // Add sections for each engineer
+  //   Object.entries(sections).forEach(([engineerId, engineerTasks]) => {
+  //     syntax += `section Engineer ${engineerId}\n`;
+  //
+  //     engineerTasks.forEach((task) => {
+  //       const startDate = format(new Date(task.start_date), "yyyy-MM-dd");
+  //       const duration = `${task.duration}d`;
+  //       const progress = task.progress || 0;
+  //       const allocation = task.allocation;
+  //
+  //       // Color coding based on allocation
+  //       const color =
+  //         allocation > 100 ? "crit" : allocation < 80 ? "active" : "done";
+  //
+  //       syntax += `${task.text} :${color}, ${startDate}, ${duration}\n`;
+  //     });
+  //
+  //     syntax += "\n";
+  //   });
+  //
+  //   return syntax;
+  // };
 
   return (
     <div className="w-full">
@@ -112,7 +109,7 @@ function GanttChart({ tasks }) {
           Mermaid Markdown:
         </h3>
         <pre className="whitespace-pre-wrap text-sm font-mono bg-white p-4 rounded border border-gray-200">
-          {generateMermaidSyntax()}
+          {markup}
         </pre>
       </div>
     </div>

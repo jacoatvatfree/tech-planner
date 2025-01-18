@@ -1,12 +1,18 @@
-import React, { useState } from "react";
-import useProjectStore from "../store/projectStore";
-import useEngineerStore from "../store/engineerStore";
+import React, { useState, useMemo } from "react";
+import { useProjectStore } from "../store/projectStore";
+import { useEngineerStore } from "../store/engineerStore";
 import { makeProject } from "../lib";
-import { PlusIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
+import {
+  PlusIcon,
+  PencilIcon,
+  TrashIcon,
+  Bars3Icon,
+} from "@heroicons/react/24/outline";
 import { format } from "date-fns";
 
 function Projects() {
-  const { projects, addProject, updateProject, removeProject } = useProjectStore();
+  const { projects, addProject, updateProject, removeProject } =
+    useProjectStore();
   const { engineers } = useEngineerStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
@@ -16,20 +22,23 @@ function Projects() {
     estimatedHours: 0,
     startAfter: format(new Date(), "yyyy-MM-dd"),
     endBefore: "",
-    priority: 3,
-    assignedEngineers: []
+    priority: projects.length + 1,
+    assignedEngineers: [],
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const projectData = makeProject({
-      name: formData.name,
-      estimatedHours: Number(formData.estimatedHours),
-      startAfter: formData.startAfter ? new Date(formData.startAfter) : null,
-      endBefore: formData.endBefore ? new Date(formData.endBefore) : null,
-      priority: Number(formData.priority),
-      assignedEngineers: formData.assignedEngineers
-    });
+    const projectData = {
+      ...makeProject({
+        name: formData.name,
+        estimatedHours: Number(formData.estimatedHours),
+        startAfter: formData.startAfter ? new Date(formData.startAfter) : null,
+        endBefore: formData.endBefore ? new Date(formData.endBefore) : null,
+        priority: Number(formData.priority),
+      }),
+      description: formData.description,
+      assignedEngineers: formData.assignedEngineers.map(String), // Ensure IDs are strings
+    };
 
     if (editingProject) {
       updateProject(editingProject.id, projectData);
@@ -47,7 +56,7 @@ function Projects() {
       startAfter: format(new Date(), "yyyy-MM-dd"),
       endBefore: "",
       priority: 3,
-      assignedEngineers: []
+      assignedEngineers: [],
     });
     setEditingProject(null);
     setIsModalOpen(false);
@@ -59,10 +68,14 @@ function Projects() {
       name: project.name,
       description: project.description || "",
       estimatedHours: project.estimatedHours,
-      startAfter: project.startAfter ? format(new Date(project.startAfter), "yyyy-MM-dd") : "",
-      endBefore: project.endBefore ? format(new Date(project.endBefore), "yyyy-MM-dd") : "",
+      startAfter: project.startAfter
+        ? format(new Date(project.startAfter), "yyyy-MM-dd")
+        : "",
+      endBefore: project.endBefore
+        ? format(new Date(project.endBefore), "yyyy-MM-dd")
+        : "",
       priority: project.priority,
-      assignedEngineers: project.assignedEngineers || []
+      assignedEngineers: project.assignedEngineers || [],
     });
     setIsModalOpen(true);
   };
@@ -81,45 +94,113 @@ function Projects() {
       </div>
 
       <div className="bg-white shadow overflow-hidden sm:rounded-md">
-        <ul className="divide-y divide-gray-200">
-          {projects.map((project) => (
-            <li key={project.id} className="px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900">
-                    {project.name}
-                  </h3>
-                  <div className="mt-1 text-sm text-gray-500">
-                    <p>{project.description}</p>
-                    <p>Estimated Hours: {project.estimatedHours}</p>
-                    <p>Priority: {project.priority}</p>
-                    <p>
-                      Start After:{" "}
-                      {project.startAfter ? format(new Date(project.startAfter), "MMM d, yyyy") : "Not set"}
-                    </p>
-                    <p>
-                      End Before:{" "}
-                      {project.endBefore ? format(new Date(project.endBefore), "MMM d, yyyy") : "Not set"}
-                    </p>
+        <ul
+          className="divide-y divide-gray-200"
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            const draggedId = e.dataTransfer.getData("text/plain");
+            const dropTarget = e.target.closest("li");
+            if (!dropTarget) return;
+
+            const items = [...projects].sort((a, b) => a.priority - b.priority);
+            const draggedIndex = items.findIndex(
+              (item) => item.id === draggedId,
+            );
+            const dropIndex = Array.from(
+              dropTarget.parentNode.children,
+            ).indexOf(dropTarget);
+
+            if (draggedIndex === dropIndex) return;
+
+            const [draggedItem] = items.splice(draggedIndex, 1);
+            items.splice(dropIndex, 0, draggedItem);
+
+            // Update priorities
+            items.forEach((item, index) => {
+              updateProject(item.id, {
+                ...item,
+                priority: index + 1,
+              });
+            });
+          }}
+        >
+          {[...projects]
+            .sort((a, b) => a.priority - b.priority)
+            .map((project, index) => (
+              <li
+                key={project.id}
+                draggable="true"
+                onDragStart={(e) => {
+                  e.dataTransfer.setData("text/plain", project.id);
+                  e.dataTransfer.effectAllowed = "move";
+                }}
+                className="px-6 py-4 cursor-move hover:bg-gray-50"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="cursor-move">
+                      <Bars3Icon className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900">
+                        {project.name}
+                      </h3>
+                      <div className="mt-1 text-sm text-gray-500">
+                        <p>{project.description}</p>
+                        <p>Estimated Hours: {project.estimatedHours}</p>
+                        <p>Priority: {project.priority}</p>
+                        <p>
+                          Start After:{" "}
+                          {project.startAfter
+                            ? format(
+                                new Date(project.startAfter),
+                                "MMM d, yyyy",
+                              )
+                            : "Not set"}
+                        </p>
+                        <p>
+                          End Before:{" "}
+                          {project.endBefore
+                            ? format(new Date(project.endBefore), "MMM d, yyyy")
+                            : "Not set"}
+                        </p>
+                        <p>
+                          Assigned Engineers:{" "}
+                          {project.assignedEngineers?.length > 0
+                            ? engineers
+                                .filter((eng) =>
+                                  project.assignedEngineers.includes(
+                                    String(eng.id),
+                                  ),
+                                )
+                                .map((eng) => eng.name)
+                                .join(", ")
+                            : "None"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => startEdit(project)}
+                      className="p-2 text-blue-600 hover:text-blue-800"
+                    >
+                      <PencilIcon className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => removeProject(project.id)}
+                      className="p-2 text-red-600 hover:text-red-800"
+                    >
+                      <TrashIcon className="h-5 w-5" />
+                    </button>
                   </div>
                 </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => startEdit(project)}
-                    className="p-2 text-blue-600 hover:text-blue-800"
-                  >
-                    <PencilIcon className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={() => removeProject(project.id)}
-                    className="p-2 text-red-600 hover:text-red-800"
-                  >
-                    <TrashIcon className="h-5 w-5" />
-                  </button>
-                </div>
-              </div>
-            </li>
-          ))}
+              </li>
+            ))}
         </ul>
       </div>
 
@@ -131,73 +212,92 @@ function Projects() {
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Name</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Name
+                </label>
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Description</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Description
+                </label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   rows={3}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Estimated Hours</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Estimated Hours
+                </label>
                 <input
                   type="number"
                   value={formData.estimatedHours}
-                  onChange={(e) => setFormData({ ...formData, estimatedHours: parseInt(e.target.value) })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      estimatedHours: parseInt(e.target.value),
+                    })
+                  }
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Start After</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Start After
+                </label>
                 <input
                   type="date"
                   value={formData.startAfter}
-                  onChange={(e) => setFormData({ ...formData, startAfter: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, startAfter: e.target.value })
+                  }
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">End Before</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  End Before
+                </label>
                 <input
                   type="date"
                   value={formData.endBefore}
-                  onChange={(e) => setFormData({ ...formData, endBefore: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, endBefore: e.target.value })
+                  }
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700">Priority (1-5)</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="5"
-                  value={formData.priority}
-                  onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Assigned Engineers</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Assigned Engineers
+                </label>
                 <select
                   multiple
                   value={formData.assignedEngineers}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    assignedEngineers: Array.from(e.target.selectedOptions, option => option.value)
-                  })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      assignedEngineers: Array.from(
+                        e.target.selectedOptions,
+                        (option) => String(option.value),
+                      ),
+                    })
+                  }
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 >
                   {engineers.map((engineer) => (

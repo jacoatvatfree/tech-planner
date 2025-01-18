@@ -1,53 +1,54 @@
-import React, { useState } from 'react'
-import useEngineerStore from '../store/engineerStore'
-import { makeEngineer } from '../lib'
-import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
+import React, { useState } from "react";
+import { useEngineerStore } from "../store/engineerStore";
+import { makeEngineer } from "../lib";
+import { PlusIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 
 function Engineers() {
-  const { engineers, addEngineer, updateEngineer, removeEngineer } = useEngineerStore()
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingEngineer, setEditingEngineer] = useState(null)
+  const { engineers, addEngineer, updateEngineer, removeEngineer } =
+    useEngineerStore();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingEngineer, setEditingEngineer] = useState(null);
   const [formData, setFormData] = useState({
-    name: '',
+    name: "",
     weeklyHours: 40,
-    skills: ''
-  })
+    skills: "",
+  });
 
   const handleSubmit = (e) => {
-    e.preventDefault()
+    e.preventDefault();
     const engineerData = makeEngineer({
       name: formData.name,
       weeklyHours: Number(formData.weeklyHours),
-      skills: formData.skills
-    })
+      skills: formData.skills,
+    });
 
     if (editingEngineer) {
-      updateEngineer(editingEngineer.id, engineerData)
+      updateEngineer(editingEngineer.id, engineerData);
     } else {
-      addEngineer(engineerData)
+      addEngineer(engineerData);
     }
-    resetForm()
-  }
+    resetForm();
+  };
 
   const resetForm = () => {
     setFormData({
-      name: '',
+      name: "",
       weeklyHours: 40,
-      skills: ''
-    })
-    setEditingEngineer(null)
-    setIsModalOpen(false)
-  }
+      skills: "",
+    });
+    setEditingEngineer(null);
+    setIsModalOpen(false);
+  };
 
   const startEdit = (engineer) => {
-    setEditingEngineer(engineer)
+    setEditingEngineer(engineer);
     setFormData({
       name: engineer.name,
       weeklyHours: engineer.weeklyHours,
-      skills: engineer.skills
-    })
-    setIsModalOpen(true)
-  }
+      skills: engineer.skills,
+    });
+    setIsModalOpen(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -68,7 +69,9 @@ function Engineers() {
             <li key={engineer.id} className="px-6 py-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">{engineer.name}</h3>
+                  <h3 className="text-lg font-medium text-gray-900">
+                    {engineer.name}
+                  </h3>
                   <div className="mt-1 text-sm text-gray-500">
                     <p>Weekly Hours: {engineer.weeklyHours}</p>
                     <p>Skills: {engineer.skills}</p>
@@ -98,35 +101,50 @@ function Engineers() {
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
             <h3 className="text-lg font-medium mb-4">
-              {editingEngineer ? 'Edit Engineer' : 'Add Engineer'}
+              {editingEngineer ? "Edit Engineer" : "Add Engineer"}
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Name</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Name
+                </label>
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Weekly Hours</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Weekly Hours
+                </label>
                 <input
                   type="number"
                   value={formData.weeklyHours}
-                  onChange={(e) => setFormData({ ...formData, weeklyHours: parseInt(e.target.value) })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      weeklyHours: parseInt(e.target.value),
+                    })
+                  }
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Skills</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Skills
+                </label>
                 <input
                   type="text"
                   value={formData.skills}
-                  onChange={(e) => setFormData({ ...formData, skills: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, skills: e.target.value })
+                  }
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
@@ -142,7 +160,7 @@ function Engineers() {
                   type="submit"
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
                 >
-                  {editingEngineer ? 'Update' : 'Add'}
+                  {editingEngineer ? "Update" : "Add"}
                 </button>
               </div>
             </form>
@@ -150,7 +168,7 @@ function Engineers() {
         </div>
       )}
     </div>
-  )
+  );
 }
 
-export default Engineers
+export default Engineers;

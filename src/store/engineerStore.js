@@ -1,4 +1,4 @@
-import create from "zustand";
+import { create } from "zustand";
 
 const STORAGE_KEY = "engineers_data";
 
@@ -43,4 +43,4 @@ const useEngineerStore = create((set) => ({
     }),
 }));
 
-export default useEngineerStore;
+export { useEngineerStore };
