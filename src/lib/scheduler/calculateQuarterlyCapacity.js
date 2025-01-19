@@ -1,4 +1,13 @@
-export function calculateQuarterlyCapacity(engineers, assignments) {
+export function calculateQuarterlyCapacity(engineers, scheduleData) {
+  // Ensure we have valid arrays to work with
+  const assignments = scheduleData?.assignments || [];
+  if (!Array.isArray(assignments) || !Array.isArray(engineers)) {
+    return {
+      totalCapacityHours: 0,
+      assignedHours: 0,
+      utilizationPercentage: 0,
+    };
+  }
   // Get current date and end of quarter
   const now = new Date();
   const endOfQuarter = new Date(now);

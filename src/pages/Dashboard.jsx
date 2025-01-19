@@ -17,9 +17,11 @@ export default function Dashboard() {
     }
   }, [currentPlanId, initializeProjects, initializeEngineers]);
 
-  const assignments = calculateSchedule(projects, engineers);
+  const planProjects = projects.filter((p) => p.planId === currentPlanId);
+  const planEngineers = engineers.filter((e) => e.planId === currentPlanId);
+  const scheduleData = calculateSchedule(planProjects, planEngineers);
   const { totalCapacityHours, assignedHours, utilizationPercentage } =
-    calculateQuarterlyCapacity(engineers, assignments);
+    calculateQuarterlyCapacity(engineers, scheduleData);
 
   return (
     <div>
@@ -43,8 +45,8 @@ export default function Dashboard() {
                     utilizationPercentage > 100
                       ? "bg-red-600"
                       : utilizationPercentage > 85
-                      ? "bg-yellow-400"
-                      : "bg-green-600"
+                        ? "bg-yellow-400"
+                        : "bg-green-600"
                   }`}
                   style={{ width: `${Math.min(utilizationPercentage, 100)}%` }}
                 ></div>

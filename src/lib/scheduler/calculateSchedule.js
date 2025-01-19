@@ -29,15 +29,17 @@ const dateUtils = {
 // Project scheduling helper functions
 const schedulingUtils = {
   calculateProjectDuration: (project, engineers) => {
-    const hoursPerWeek = project.allocations.reduce((sum, allocation) => {
+    // Calculate total hours per day across all allocations
+    const hoursPerDay = project.allocations.reduce((sum, allocation) => {
       const engineer = engineers.find((e) => e.id === allocation.engineerId);
       if (!engineer) return sum;
       const percentage = allocation.percentage || 100;
-      const engineerWeeklyHours = engineer.weeklyHours || 40;
-      return sum + engineerWeeklyHours * (percentage / 100);
+      const engineerDailyHours = (engineer.weeklyHours || 40) / 5;
+      return sum + engineerDailyHours * (percentage / 100);
     }, 0);
 
-    const daysNeeded = project.estimatedHours / (hoursPerWeek / 5);
+    // Calculate days needed by dividing total project hours by combined daily hours
+    const daysNeeded = Math.ceil(project.estimatedHours / hoursPerDay);
     return daysNeeded / 5; // Convert to weeks
   },
 
@@ -242,6 +244,204 @@ export function calculateSchedule(projects, engineers) {
     });
   }
 
-  console.log(assignments);
-  return assignments;
+  // Convert assignments to scheduled projects format
+  const scheduledProjects = projects.map((project) => {
+    const projectAssignments = assignments.filter(
+      (a) => a.projectId === project.id,
+    );
+    if (projectAssignments.length === 0) return project;
+
+    const startDate = new Date(
+      Math.min(...projectAssignments.map((a) => a.startDate)),
+    );
+    const endDate = new Date(
+      Math.max(
+        ...projectAssignments.map((a) => {
+          const end = new Date(a.startDate);
+          end.setDate(end.getDate() + Math.ceil(a.weeksNeeded * 5));
+          return end;
+        }),
+      ),
+    );
+
+    return {
+      ...project,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      assignments: projectAssignments,
+    };
+  });
+
+  // Calculate resource utilization
+  const calculateResourceUtilization = (
+    scheduledProjects,
+    availableEngineers,
+  ) => {
+    let totalAllocatedHours = 0;
+    let totalAvailableHours = 0;
+
+    // Get the full date range of the plan
+    const projectsWithDates = scheduledProjects.filter(
+      (p) => p.startDate && p.endDate,
+    );
+
+    if (projectsWithDates.length === 0) {
+      return {
+        allocated: 0,
+        available: 0,
+        percentage: 0,
+      };
+    }
+
+    const planStart = new Date(
+      Math.min(
+        ...projectsWithDates.map((project) => new Date(project.startDate)),
+      ),
+    );
+    const planEnd = new Date(
+      Math.max(
+        ...projectsWithDates.map((project) => new Date(project.endDate)),
+      ),
+    );
+
+    // Ensure we have valid dates
+    if (isNaN(planStart.getTime()) || isNaN(planEnd.getTime())) {
+      console.warn("Invalid date range detected in resource calculation");
+      return {
+        allocated: 0,
+        available: 0,
+        percentage: 0,
+      };
+    }
+
+    const totalWeeks = Math.max(
+      1,
+      Math.ceil((planEnd - planStart) / (7 * 24 * 60 * 60 * 1000)),
+    );
+
+    // Calculate total available capacity
+    availableEngineers.forEach((engineer) => {
+      const weeklyHours = engineer.weeklyHours || 40; // Using weeklyHours instead of hoursPerWeek
+      totalAvailableHours += weeklyHours * totalWeeks;
+    });
+
+    // Calculate total allocated hours
+    projectsWithDates.forEach((project) => {
+      const projectStart = new Date(project.startDate);
+      const projectEnd = new Date(project.endDate);
+
+      if (isNaN(projectStart.getTime()) || isNaN(projectEnd.getTime())) {
+        console.warn(`Invalid dates for project ${project.id}`);
+        return;
+      }
+
+      const projectWeeks = Math.max(
+        1,
+        Math.ceil((projectEnd - projectStart) / (7 * 24 * 60 * 60 * 1000)),
+      );
+
+      project.assignments?.forEach((assignment) => {
+        const engineer = availableEngineers.find(
+          (e) => e.id === assignment.engineerId,
+        );
+        if (!engineer) return;
+
+        const percentage = Number(assignment.percentage) || 0;
+        const weeklyHours = engineer.weeklyHours || 40;
+        const assignedHours = ((weeklyHours * percentage) / 100) * projectWeeks;
+        totalAllocatedHours += assignedHours;
+      });
+    });
+
+    // Ensure we don't return negative or NaN values
+    totalAllocatedHours = Math.max(0, totalAllocatedHours);
+    totalAvailableHours = Math.max(0, totalAvailableHours);
+
+    return {
+      allocated: Math.round(totalAllocatedHours * 10) / 10,
+      available: Math.round(totalAvailableHours * 10) / 10,
+      percentage:
+        totalAvailableHours > 0
+          ? Math.round((totalAllocatedHours / totalAvailableHours) * 1000) / 10
+          : 0,
+    };
+  };
+  // Calculate resource utilization
+  // const calculateResourceUtilization = (
+  //   scheduledProjects,
+  //   availableEngineers,
+  // ) => {
+  //   let totalAllocatedHours = 0;
+  //   let totalAvailableHours = 0;
+  //
+  //   // Get the full date range of the plan
+  //   const allDates = scheduledProjects
+  //     .filter((p) => p.startDate && p.endDate)
+  //     .flatMap((project) => [
+  //       new Date(project.startDate),
+  //       new Date(project.endDate),
+  //     ]);
+  //
+  //   if (allDates.length === 0) {
+  //     return {
+  //       allocated: 0,
+  //       available: 0,
+  //       percentage: 0,
+  //     };
+  //   }
+  //
+  //   const planStart = new Date(Math.min(...allDates));
+  //   const planEnd = new Date(Math.max(...allDates));
+  //   const totalWeeks = Math.ceil(
+  //     (planEnd - planStart) / (7 * 24 * 60 * 60 * 1000),
+  //   );
+  //
+  //   // Calculate total available capacity
+  //   availableEngineers.forEach((engineer) => {
+  //     const weeklyHours = engineer.hoursPerWeek || 40;
+  //     totalAvailableHours += weeklyHours * totalWeeks;
+  //   });
+  //
+  //   // Calculate total allocated hours
+  //   scheduledProjects.forEach((project) => {
+  //     if (!project.startDate || !project.endDate) return;
+  //
+  //     const projectStart = new Date(project.startDate);
+  //     const projectEnd = new Date(project.endDate);
+  //     const projectWeeks = Math.ceil(
+  //       (projectEnd - projectStart) / (7 * 24 * 60 * 60 * 1000),
+  //     );
+  //
+  //     project.assignments?.forEach((assignment) => {
+  //       const percentage = Number(assignment.percentage) || 0;
+  //       const weeklyHours = Number(project.hoursPerWeek) || 40;
+  //       const assignedHours = ((weeklyHours * percentage) / 100) * projectWeeks;
+  //       totalAllocatedHours += assignedHours;
+  //     });
+  //   });
+  //
+  //   return {
+  //     allocated: Math.round(totalAllocatedHours * 10) / 10,
+  //     available: Math.round(totalAvailableHours * 10) / 10,
+  //     percentage:
+  //       totalAvailableHours > 0
+  //         ? Math.round((totalAllocatedHours / totalAvailableHours) * 1000) / 10
+  //         : 0,
+  //   };
+  // };
+
+  const resourceUtilization = calculateResourceUtilization(
+    scheduledProjects,
+    engineers,
+  );
+
+  console.log("Assignments:", assignments);
+  console.log("Scheduled Projects:", scheduledProjects);
+  console.log("Resource Utilization:", resourceUtilization);
+
+  return {
+    assignments,
+    scheduledProjects,
+    resourceUtilization,
+  };
 }

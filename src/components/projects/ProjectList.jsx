@@ -56,7 +56,7 @@ export default function ProjectList({ onEdit }) {
 
     // Update all projects with new sequential priorities
     reorderedProjects.forEach((project, index) => {
-      updateProject(project.id, {
+      updateProject({
         ...project,
         priority: index + 1,
       });

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { usePlanStore } from "../store/planStore";
 import { makePlan } from "../lib/factories";
-import { PlusIcon } from "@heroicons/react/24/outline";
+import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { format } from "date-fns";
 
 function PlanForm({ onSubmit, onCancel }) {
@@ -96,7 +96,8 @@ function PlanForm({ onSubmit, onCancel }) {
 }
 
 export default function PlanSelector() {
-  const { plans, addPlan, setCurrentPlanId, currentPlanId } = usePlanStore();
+  const { plans, addPlan, setCurrentPlanId, currentPlanId, removePlan } =
+    usePlanStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleAddPlan = (plan) => {
@@ -107,36 +108,87 @@ export default function PlanSelector() {
   return (
     <div className="py-4">
       <div className="sm:hidden">
-        <select
-          className="form-select w-full"
-          value={currentPlanId || ""}
-          onChange={(e) => setCurrentPlanId(e.target.value)}
-        >
-          <option value="">Select a plan</option>
-          {plans.map((plan) => (
-            <option key={plan.id} value={plan.id}>
-              {plan.name}
-            </option>
-          ))}
-        </select>
+        <div className="flex space-x-2 mb-2">
+          <select
+            className="form-select flex-grow"
+            value={currentPlanId || ""}
+            onChange={(e) => setCurrentPlanId(e.target.value)}
+          >
+            <option value="">Select a plan</option>
+            {plans.map((plan) => (
+              <option key={plan.id} value={plan.id}>
+                {plan.name} {currentPlanId === plan.id ? "(current)" : ""}
+              </option>
+            ))}
+          </select>
+          <div className="flex space-x-2">
+            {currentPlanId && (
+              <button
+                type="button"
+                onClick={() => {
+                  const plan = plans.find((p) => p.id === currentPlanId);
+                  if (
+                    window.confirm(
+                      `Delete plan "${plan.name}" and all its data?`,
+                    )
+                  ) {
+                    setCurrentPlanId(null);
+                    removePlan(plan.id);
+                  }
+                }}
+                className="p-2 text-gray-400 hover:text-red-600 rounded-md hover:bg-gray-100"
+                title="Delete current plan"
+              >
+                <TrashIcon className="h-5 w-5" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(true)}
+              className="inline-flex items-center p-2 rounded-md text-white bg-blue-600 hover:bg-blue-700"
+              title="Add new plan"
+            >
+              <PlusIcon className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
       </div>
       <div className="hidden sm:block">
         <nav className="flex space-x-4" aria-label="Plans">
           {plans.map((plan) => (
-            <button
-              key={plan.id}
-              onClick={() => setCurrentPlanId(plan.id)}
-              className={`
-                px-3 py-2 rounded-md text-sm font-medium
-                ${
-                  currentPlanId === plan.id
-                    ? "bg-blue-100 text-blue-700"
-                    : "text-gray-500 hover:text-gray-700"
-                }
-              `}
-            >
-              {plan.name}
-            </button>
+            <div key={plan.id} className="flex items-center">
+              <button
+                onClick={() => setCurrentPlanId(plan.id)}
+                className={`
+                  px-3 py-2 rounded-md text-sm font-medium
+                  ${
+                    currentPlanId === plan.id
+                      ? "bg-blue-100 text-blue-700"
+                      : "text-gray-500 hover:text-gray-700"
+                  }
+                `}
+              >
+                {plan.name}
+              </button>
+              <button
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `Delete plan "${plan.name}" and all its data?`,
+                    )
+                  ) {
+                    if (currentPlanId === plan.id) {
+                      setCurrentPlanId(null);
+                    }
+                    removePlan(plan.id);
+                  }
+                }}
+                className="ml-2 p-1 text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100"
+                title="Delete plan"
+              >
+                <TrashIcon className="h-4 w-4" />
+              </button>
+            </div>
           ))}
           <button
             onClick={() => setIsModalOpen(true)}

@@ -7,15 +7,45 @@ import {
   CalendarIcon,
 } from "@heroicons/react/24/outline";
 import PlanSelector from "./PlanSelector";
+import { usePlanStore } from "../store/planStore";
 
-const navigation = [
-  { name: "Dashboard", href: "/", icon: HomeIcon },
-  { name: "Team", href: "/engineers", icon: UserGroupIcon },
-  { name: "Projects", href: "/projects", icon: ClipboardIcon },
-  { name: "Schedule", href: "/schedule", icon: CalendarIcon },
+const getNavigation = (hasPlan) => [
+  { name: "Dashboard", href: "/", icon: HomeIcon, alwaysShow: true },
+  { name: "Team", href: "/engineers", icon: UserGroupIcon, alwaysShow: false },
+  {
+    name: "Projects",
+    href: "/projects",
+    icon: ClipboardIcon,
+    alwaysShow: false,
+  },
+  {
+    name: "Schedule",
+    href: "/schedule",
+    icon: CalendarIcon,
+    alwaysShow: false,
+  },
 ];
 
 function Layout() {
+  const { currentPlanId, initializeFromStorage } = usePlanStore();
+  const [isInitialized, setIsInitialized] = React.useState(false);
+
+  React.useEffect(() => {
+    initializeFromStorage();
+    setIsInitialized(true);
+  }, [initializeFromStorage]);
+
+  const navigation = getNavigation().filter(
+    (item) => item.alwaysShow || currentPlanId,
+  );
+
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen bg-gray-100">
       <nav className="bg-white shadow-sm">
@@ -52,7 +82,18 @@ function Layout() {
 
       <main className="py-10">
         <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-          <Outlet />
+          {currentPlanId ? (
+            <Outlet />
+          ) : (
+            <div className="text-center py-12">
+              <h3 className="text-lg font-medium text-gray-900">
+                No Plan Selected
+              </h3>
+              <p className="mt-2 text-sm text-gray-500">
+                Please select or create a plan to get started.
+              </p>
+            </div>
+          )}
         </div>
       </main>
     </div>
