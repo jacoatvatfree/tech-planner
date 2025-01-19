@@ -9,7 +9,7 @@ export default function EngineerSelect({
 
   return (
     <div>
-      <label className="form-label">Allocate Engineers</label>
+      <label className="form-label">Allocate Team Members</label>
       <select
         multiple
         value={selectedEngineers}

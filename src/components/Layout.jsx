@@ -6,10 +6,11 @@ import {
   ClipboardIcon,
   CalendarIcon,
 } from "@heroicons/react/24/outline";
+import PlanSelector from "./PlanSelector";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: HomeIcon },
-  { name: "Engineers", href: "/engineers", icon: UserGroupIcon },
+  { name: "Team", href: "/engineers", icon: UserGroupIcon },
   { name: "Projects", href: "/projects", icon: ClipboardIcon },
   { name: "Schedule", href: "/schedule", icon: CalendarIcon },
 ];
@@ -42,6 +43,12 @@ function Layout() {
           </div>
         </div>
       </nav>
+
+      <div className="border-b border-gray-200 bg-white">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <PlanSelector />
+        </div>
+      </div>
 
       <main className="py-10">
         <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">

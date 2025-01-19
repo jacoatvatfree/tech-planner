@@ -1,142 +1,69 @@
-import React from "react";
-import { useEngineerStore } from "../store/engineerStore";
+import React, { useEffect } from "react";
+import { usePlanStore } from "../store/planStore";
 import { useProjectStore } from "../store/projectStore";
-import { calculateSchedule } from "../lib/scheduler/calculateSchedule";
+import { useEngineerStore } from "../store/engineerStore";
 import { calculateQuarterlyCapacity } from "../lib/scheduler/calculateQuarterlyCapacity";
+import { calculateSchedule } from "../lib/scheduler/calculateSchedule";
 
-function Dashboard() {
-  const { engineers } = useEngineerStore();
-  const { projects } = useProjectStore();
+export default function Dashboard() {
+  const { currentPlanId } = usePlanStore();
+  const { projects, initializeProjects } = useProjectStore();
+  const { engineers, initializeEngineers } = useEngineerStore();
 
-  const totalEngineers = engineers.length;
-  const totalProjects = projects.length;
+  useEffect(() => {
+    if (currentPlanId) {
+      initializeProjects(currentPlanId);
+      initializeEngineers(currentPlanId);
+    }
+  }, [currentPlanId, initializeProjects, initializeEngineers]);
+
   const assignments = calculateSchedule(projects, engineers);
-
-  // Calculate schedule metrics from assignments
-  const now = new Date();
-  const activeProjects =
-    assignments.length > 0
-      ? new Set(
-          assignments
-            .filter((assignment) => {
-              const startDate = new Date(assignment.startDate);
-              const endDate = new Date(assignment.startDate);
-              endDate.setDate(endDate.getDate() + assignment.weeksNeeded * 7);
-              return startDate <= now && endDate >= now;
-            })
-            .map((a) => a.projectId),
-        ).size
-      : 0;
-
-  const scheduleStart =
-    assignments.length > 0
-      ? new Date(Math.min(...assignments.map((a) => new Date(a.startDate))))
-      : null;
-
-  const scheduleEnd =
-    assignments.length > 0
-      ? new Date(
-          Math.max(
-            ...assignments.map((a) => {
-              const endDate = new Date(a.startDate);
-              endDate.setDate(endDate.getDate() + a.weeksNeeded * 7);
-              return endDate;
-            }),
-          ),
-        )
-      : null;
+  const { totalCapacityHours, assignedHours, utilizationPercentage } =
+    calculateQuarterlyCapacity(engineers, assignments);
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
-
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-4">
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <dt className="text-sm font-medium text-gray-500 truncate">
-              Total Engineers
-            </dt>
-            <dd className="mt-1 text-3xl font-semibold text-gray-900">
-              {totalEngineers}
-            </dd>
-          </div>
-        </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <dt className="text-sm font-medium text-gray-500 truncate">
-              Total Projects
-            </dt>
-            <dd className="mt-1 text-3xl font-semibold text-gray-900">
-              {totalProjects}
-            </dd>
-          </div>
-        </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <dt className="text-sm font-medium text-gray-500 truncate">
-              Schedule Start
-            </dt>
-            <dd className="mt-1 text-3xl font-semibold text-gray-900">
-              {scheduleStart ? scheduleStart.toLocaleDateString() : "-"}
-            </dd>
-          </div>
-        </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <dt className="text-sm font-medium text-gray-500 truncate">
-              Schedule End
-            </dt>
-            <dd className="mt-1 text-3xl font-semibold text-gray-900">
-              {scheduleEnd ? scheduleEnd.toLocaleDateString() : "-"}
-            </dd>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white overflow-hidden shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <dt className="text-sm font-medium text-gray-500 truncate">
-            Quarterly Utilization
-          </dt>
-          {(() => {
-            const { totalCapacityHours, assignedHours, utilizationPercentage } =
-              calculateQuarterlyCapacity(engineers, assignments);
-
-            // Determine color based on utilization
-            const barColor =
-              utilizationPercentage > 90
-                ? "bg-red-500"
-                : utilizationPercentage > 70
-                  ? "bg-green-500"
-                  : "bg-yellow-500";
-
-            return (
-              <div>
-                <dd className="mt-1 text-3xl font-semibold text-gray-900">
+    <div>
+      <h2 className="text-2xl font-bold mb-4">Dashboard</h2>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-white shadow rounded-lg p-4">
+          <h3 className="text-lg font-medium mb-4">Plan Resource Usage</h3>
+          <div className="space-y-4">
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className="text-sm font-medium text-gray-700">
+                  Capacity Utilization
+                </span>
+                <span className="text-sm font-medium text-gray-700">
                   {utilizationPercentage}%
-                </dd>
-                <div className="mt-3 w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full ${barColor} transition-all duration-500 ease-in-out`}
-                    style={{
-                      width: `${Math.min(utilizationPercentage, 100)}%`,
-                    }}
-                  />
-                </div>
-                <p className="mt-2 text-sm text-gray-500">
-                  {Math.round(assignedHours)} / {Math.round(totalCapacityHours)}{" "}
-                  hours allocated this quarter
-                </p>
+                </span>
               </div>
-            );
-          })()}
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div
+                  className={`h-2.5 rounded-full ${
+                    utilizationPercentage > 100
+                      ? "bg-red-600"
+                      : utilizationPercentage > 85
+                      ? "bg-yellow-400"
+                      : "bg-green-600"
+                  }`}
+                  style={{ width: `${Math.min(utilizationPercentage, 100)}%` }}
+                ></div>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600">
+              Total Capacity: {Math.round(totalCapacityHours)} hours
+            </p>
+            <p className="text-sm text-gray-600">
+              Assigned Hours: {Math.round(assignedHours)} hours
+            </p>
+          </div>
+        </div>
+        <div className="bg-white shadow rounded-lg p-4">
+          <h3 className="text-lg font-medium mb-2">Project Overview</h3>
+          <p>Total Projects: {projects.length}</p>
+          <p>Total Team Members: {engineers.length}</p>
         </div>
       </div>
     </div>
   );
 }
-
-export default Dashboard;

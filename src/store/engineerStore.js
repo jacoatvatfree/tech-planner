@@ -1,46 +1,62 @@
 import { create } from "zustand";
+    import { usePlanStore } from "./planStore";
 
-const STORAGE_KEY = "engineers_data";
+    const STORAGE_KEY = "engineers_data";
 
-// Load initial state from localStorage
-const getInitialState = () => {
-  const storedData = localStorage.getItem(STORAGE_KEY);
-  return storedData ? JSON.parse(storedData) : [];
-};
+    const getInitialState = (planId) => {
+      const storedData = localStorage.getItem(`${STORAGE_KEY}_${planId}`);
+      return storedData ? JSON.parse(storedData) : [];
+    };
 
-const useEngineerStore = create((set) => ({
-  engineers: getInitialState(),
-  addEngineer: (engineer) =>
-    set((state) => {
-      const newState = {
-        engineers: [...state.engineers, { ...engineer, id: Date.now() }],
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newState.engineers));
-      return newState;
-    }),
-  updateEngineer: (id, updates) =>
-    set((state) => {
-      const newState = {
-        engineers: state.engineers.map((eng) =>
-          eng.id === id ? { ...eng, ...updates } : eng,
-        ),
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newState.engineers));
-      return newState;
-    }),
-  removeEngineer: (id) =>
-    set((state) => {
-      const newState = {
-        engineers: state.engineers.filter((eng) => eng.id !== id),
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newState.engineers));
-      return newState;
-    }),
-  clearEngineers: () =>
-    set(() => {
-      localStorage.removeItem(STORAGE_KEY);
-      return { engineers: [] };
-    }),
-}));
+    const useEngineerStore = create((set, get) => ({
+      engineers: [],
+      initializeEngineers: (planId) => {
+        set({ engineers: getInitialState(planId) });
+      },
+      addEngineer: (engineer) =>
+        set((state) => {
+          const { currentPlanId } = usePlanStore.getState();
+          const newState = {
+            engineers: [...state.engineers, engineer],
+          };
+          localStorage.setItem(
+            `${STORAGE_KEY}_${currentPlanId}`,
+            JSON.stringify(newState.engineers),
+          );
+          return newState;
+        }),
+      updateEngineer: (id, updates) =>
+        set((state) => {
+          const { currentPlanId } = usePlanStore.getState();
+          const newState = {
+            engineers: state.engineers.map((engineer) =>
+              engineer.id === id ? { ...engineer, ...updates } : engineer,
+            ),
+          };
+          localStorage.setItem(
+            `${STORAGE_KEY}_${currentPlanId}`,
+            JSON.stringify(newState.engineers),
+          );
+          return newState;
+        }),
+      removeEngineer: (id) =>
+        set((state) => {
+          const { currentPlanId } = usePlanStore.getState();
+          const newState = {
+            engineers: state.engineers.filter((engineer) => engineer.id !== id),
+          };
+          localStorage.setItem(
+            `${STORAGE_KEY}_${currentPlanId}`,
+            JSON.stringify(newState.engineers),
+          );
+          return newState;
+        }),
+      clearEngineers: () =>
+        set(() => {
+          const { currentPlanId } = usePlanStore.getState();
+          localStorage.removeItem(`${STORAGE_KEY}_${currentPlanId}`);
+          return { engineers: [] };
+        }),
+    }));
 
-export { useEngineerStore };
+    export { useEngineerStore };

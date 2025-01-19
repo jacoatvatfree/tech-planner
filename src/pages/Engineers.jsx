@@ -1,164 +1,166 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useEngineerStore } from "../store/engineerStore";
 import { makeEngineer } from "../lib";
-import { PlusIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { usePlanStore } from "../store/planStore";
 
-function Engineers() {
-  const { engineers, addEngineer, updateEngineer, removeEngineer } =
-    useEngineerStore();
+export default function Engineers() {
+  const {
+    engineers,
+    addEngineer,
+    updateEngineer,
+    removeEngineer,
+    initializeEngineers,
+  } = useEngineerStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEngineer, setEditingEngineer] = useState(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    weeklyHours: 40,
-  });
-
-  const nameInputRef = useRef(null);
+  const { currentPlanId } = usePlanStore();
 
   useEffect(() => {
-    if (isModalOpen && nameInputRef.current) {
-      nameInputRef.current.focus();
+    if (currentPlanId) {
+      initializeEngineers(currentPlanId);
     }
-  }, [isModalOpen]);
+  }, [currentPlanId, initializeEngineers]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const engineerData = makeEngineer({
-      name: formData.name,
-      weeklyHours: Number(formData.weeklyHours),
-    });
-
-    if (editingEngineer) {
-      updateEngineer(editingEngineer.id, engineerData);
-    } else {
-      addEngineer(engineerData);
-    }
-    resetForm();
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      weeklyHours: 40,
-    });
-    setEditingEngineer(null);
+  const handleAddEngineer = (engineer) => {
+    addEngineer(engineer);
     setIsModalOpen(false);
   };
 
-  const startEdit = (engineer) => {
+  const handleEditEngineer = (engineer) => {
     setEditingEngineer(engineer);
-    setFormData({
-      name: engineer.name,
-      weeklyHours: engineer.weeklyHours,
-    });
     setIsModalOpen(true);
   };
 
+  const handleUpdateEngineer = (engineer) => {
+    updateEngineer(engineer.id, engineer);
+    setIsModalOpen(false);
+    setEditingEngineer(null);
+  };
+
+  const handleRemoveEngineer = (id) => {
+    removeEngineer(id);
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">Engineers</h2>
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold">Team</h2>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         >
-          <PlusIcon className="h-5 w-5 mr-2" />
-          Add Engineer
+          Add Team Member
         </button>
       </div>
-
       <div className="bg-white shadow overflow-hidden sm:rounded-md">
         <ul className="divide-y divide-gray-200">
           {engineers.map((engineer) => (
-            <li key={engineer.id} className="px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900">
-                    {engineer.name}
-                  </h3>
-                  <div className="mt-1 text-sm text-gray-500">
-                    <p>Weekly Hours: {engineer.weeklyHours}</p>
-                  </div>
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => startEdit(engineer)}
-                    className="p-2 text-blue-600 hover:text-blue-800"
-                  >
-                    <PencilIcon className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={() => removeEngineer(engineer.id)}
-                    className="p-2 text-red-600 hover:text-red-800"
-                  >
-                    <TrashIcon className="h-5 w-5" />
-                  </button>
-                </div>
+            <li
+              key={engineer.id}
+              className="px-6 py-3 hover:bg-gray-50 flex items-center justify-between"
+            >
+              <div className="flex-1">
+                <h3 className="text-base font-medium text-gray-900">
+                  {engineer.name}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Weekly Hours: {engineer.weeklyHours}
+                </p>
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => handleEditEngineer(engineer)}
+                  className="px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-colors"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleRemoveEngineer(engineer.id)}
+                  className="px-3 py-1 text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition-colors"
+                >
+                  Delete
+                </button>
               </div>
             </li>
           ))}
         </ul>
       </div>
-
       {isModalOpen && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-medium mb-4">
-              {editingEngineer ? "Edit Engineer" : "Add Engineer"}
-            </h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="form-label">Name</label>
-                <input
-                  ref={nameInputRef}
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  className="form-input"
-                  placeholder="Enter engineer name"
-                  required
-                />
-              </div>
-              <div>
-                <label className="form-label">Weekly Hours</label>
-                <input
-                  type="number"
-                  value={formData.weeklyHours}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      weeklyHours: parseInt(e.target.value),
-                    })
-                  }
-                  className="form-input"
-                  min="0"
-                  max="168"
-                  required
-                />
-              </div>
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                >
-                  {editingEngineer ? "Update" : "Add"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <EngineerForm
+          onSubmit={editingEngineer ? handleUpdateEngineer : handleAddEngineer}
+          onCancel={() => {
+            setIsModalOpen(false);
+            setEditingEngineer(null);
+          }}
+          editingEngineer={editingEngineer}
+        />
       )}
     </div>
   );
 }
 
-export default Engineers;
+function EngineerForm({ onSubmit, onCancel, editingEngineer }) {
+  const [formData, setFormData] = useState(
+    editingEngineer
+      ? { ...editingEngineer }
+      : { name: "", weeklyHours: 40 },
+  );
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(makeEngineer(formData));
+  };
+
+  return (
+    <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full">
+        <h3 className="text-lg font-medium mb-4">
+          {editingEngineer ? "Edit Team Member" : "Add Team Member"}
+        </h3>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="form-label">Name</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              className="form-input"
+              placeholder="Enter team member name"
+              required
+            />
+          </div>
+          <div>
+            <label className="form-label">Weekly Hours</label>
+            <input
+              type="number"
+              value={formData.weeklyHours}
+              onChange={(e) =>
+                setFormData({ ...formData, weeklyHours: Number(e.target.value) })
+              }
+              className="form-input"
+              placeholder="Enter weekly hours"
+              required
+            />
+          </div>
+          <div className="flex justify-end space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              {editingEngineer ? "Update" : "Add"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
