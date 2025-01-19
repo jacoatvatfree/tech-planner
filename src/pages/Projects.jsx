@@ -22,10 +22,19 @@ export default function Projects() {
     }
   }, [currentPlanId, initializeProjects]);
 
-  const handleAddProject = (project) => {
-    addProject(project);
-    reprioritizeProjects();
-    setIsModalOpen(false);
+  const handleAddProject = async (project) => {
+    try {
+      const newProject = {
+        ...project,
+        planId: currentPlanId,
+      };
+      await addProject(newProject);
+      await initializeProjects(currentPlanId);
+      reprioritizeProjects();
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error("Failed to add project:", error);
+    }
   };
 
   const handleEditProject = (project) => {

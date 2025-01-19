@@ -62,7 +62,7 @@ export default function GanttChart({ markup }) {
 
   return (
     <div className="w-full space-y-8">
-      <Statistics />
+      {/* <Statistics /> */}
       <div
         ref={chartRef}
         className="mermaid-container overflow-x-auto bg-white p-4 rounded-lg border border-gray-200"

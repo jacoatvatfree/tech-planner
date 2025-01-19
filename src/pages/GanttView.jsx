@@ -16,6 +16,7 @@ export default function GanttView() {
   const [markup, setMarkup] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [viewType, setViewType] = useState("resource");
 
   useEffect(() => {
     if (currentPlanId) {
@@ -108,6 +109,7 @@ export default function GanttView() {
           planProjects,
           currentPlan?.startDate,
           currentPlan?.endDate,
+          viewType,
         );
 
         if (!newMarkup) {
@@ -137,9 +139,10 @@ export default function GanttView() {
   }, [
     currentPlan?.startDate,
     currentPlan?.endDate,
-    planProjects.length,
-    planEngineers.length,
-    scheduleData?.assignments,
+    planProjects, // Watch filtered projects instead of all projects
+    planEngineers, // Watch filtered engineers instead of all engineers
+    viewType,
+    currentPlanId,
   ]);
   if (error) {
     return (
@@ -157,6 +160,44 @@ export default function GanttView() {
   }
 
   return (
-    <div className="space-y-4">{markup && <GanttChart markup={markup} />}</div>
+    <div className="space-y-4">
+      <div className="flex items-center space-x-4 p-4">
+        <div className="flex items-center space-x-2">
+          <input
+            type="radio"
+            id="resource-view"
+            name="view-type"
+            value="resource"
+            checked={viewType === "resource"}
+            onChange={(e) => setViewType(e.target.value)}
+            className="text-blue-600 focus:ring-blue-500"
+          />
+          <label
+            htmlFor="resource-view"
+            className="text-sm font-medium text-gray-700"
+          >
+            By Team Member
+          </label>
+        </div>
+        <div className="flex items-center space-x-2">
+          <input
+            type="radio"
+            id="project-view"
+            name="view-type"
+            value="project"
+            checked={viewType === "project"}
+            onChange={(e) => setViewType(e.target.value)}
+            className="text-blue-600 focus:ring-blue-500"
+          />
+          <label
+            htmlFor="project-view"
+            className="text-sm font-medium text-gray-700"
+          >
+            By Project
+          </label>
+        </div>
+      </div>
+      {markup && <GanttChart markup={markup} />}
+    </div>
   );
 }
