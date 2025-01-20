@@ -4,9 +4,10 @@ import { useProjectStore } from "../store/projectStore";
 import { useEngineerStore } from "../store/engineerStore";
 import { calculateQuarterlyCapacity } from "../lib/scheduler/calculateQuarterlyCapacity";
 import { calculateSchedule } from "../lib/scheduler/calculateSchedule";
+import { v4 as uuidv4 } from "uuid";
 
 export default function Dashboard() {
-  const { currentPlanId } = usePlanStore();
+  const { currentPlanId, plans, addPlan } = usePlanStore();
   const { projects, initializeProjects } = useProjectStore();
   const { engineers, initializeEngineers } = useEngineerStore();
 
@@ -23,9 +24,106 @@ export default function Dashboard() {
   const { totalCapacityHours, assignedHours, utilizationPercentage } =
     calculateQuarterlyCapacity(engineers, scheduleData);
 
+  const handleExportPlan = () => {
+    const currentPlan = plans.find((p) => p.id === currentPlanId);
+    if (!currentPlan) return;
+
+    const exportData = {
+      plan: currentPlan,
+      engineers: planEngineers,
+      projects: planProjects,
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `plan-${currentPlan.name}-${new Date().toISOString().split("T")[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportPlan = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const importData = JSON.parse(text);
+
+      // Generate new IDs for the imported plan and its components
+      const newPlanId = uuidv4();
+
+      // Create new plan
+      const newPlan = {
+        ...importData.plan,
+        id: newPlanId,
+        name: `${importData.plan.name} (Imported)`,
+      };
+
+      // Add the new plan
+      await addPlan(newPlan);
+
+      // Initialize stores for the new plan
+      await initializeEngineers(newPlanId);
+      await initializeProjects(newPlanId);
+
+      // Import engineers with new IDs and updated planId
+      const engineerPromises = importData.engineers.map((engineer) => {
+        const newEngineer = {
+          ...engineer,
+          id: uuidv4(),
+          planId: newPlanId,
+        };
+        return useEngineerStore.getState().addEngineer(newEngineer);
+      });
+
+      // Import projects with new IDs and updated planId
+      const projectPromises = importData.projects.map((project) => {
+        const newProject = {
+          ...project,
+          id: uuidv4(),
+          planId: newPlanId,
+        };
+        return useProjectStore.getState().addProject(newProject);
+      });
+
+      await Promise.all([...engineerPromises, ...projectPromises]);
+
+      // Reset the file input
+      event.target.value = "";
+    } catch (error) {
+      console.error("Error importing plan:", error);
+      alert("Error importing plan. Please check the file format.");
+    }
+  };
+
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-4">Dashboard</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold">Dashboard</h2>
+        <div className="flex gap-4">
+          <button
+            onClick={handleExportPlan}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Export Plan
+          </button>
+          <label className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded cursor-pointer">
+            Import Plan
+            <input
+              type="file"
+              accept=".json"
+              onChange={handleImportPlan}
+              className="hidden"
+            />
+          </label>
+        </div>
+      </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-white shadow rounded-lg p-4">
           <h3 className="text-lg font-medium mb-4">Plan Resource Usage</h3>

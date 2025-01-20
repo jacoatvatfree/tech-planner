@@ -165,7 +165,7 @@ export function generateGanttMarkup(
   }
 
   markup += "\n    section End\n";
-  markup += `    e :milestone, ${planEndDate.split("T")[0]}, 0d\n\n`;
+  markup += `    e :milestone, ${safeEndDate.toISOString().split("T")[0]}, 0d\n\n`;
 
   return markup;
 }

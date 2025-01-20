@@ -1,8 +1,15 @@
 import React, { useState } from "react";
 import { usePlanStore } from "../store/planStore";
+import { useProjectStore } from "../store/projectStore";
+import { useEngineerStore } from "../store/engineerStore";
 import { makePlan } from "../lib/factories";
-import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import {
+  PlusIcon,
+  TrashIcon,
+  ArrowUpTrayIcon,
+} from "@heroicons/react/24/outline";
 import { format } from "date-fns";
+import { v4 as uuidv4 } from "uuid";
 
 function PlanForm({ onSubmit, onCancel }) {
   const [formData, setFormData] = useState({
@@ -98,11 +105,125 @@ function PlanForm({ onSubmit, onCancel }) {
 export default function PlanSelector() {
   const { plans, addPlan, setCurrentPlanId, currentPlanId, removePlan } =
     usePlanStore();
+  const { initializeProjects } = useProjectStore();
+  const { initializeEngineers, addEngineer } = useEngineerStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleAddPlan = (plan) => {
     addPlan(plan);
     setIsModalOpen(false);
+  };
+
+  const handleDeletePlan = async (planId, planName) => {
+    if (window.confirm(`Delete plan "${planName}" and all its data?`)) {
+      // Clear current plan ID if it's the one being deleted
+      if (currentPlanId === planId) {
+        setCurrentPlanId(null);
+      }
+
+      // Clear associated projects and engineers
+      await useProjectStore.getState().clearProjects();
+      await useEngineerStore.getState().clearEngineers();
+
+      // Remove the plan
+      removePlan(planId);
+    }
+  };
+
+  const handleImportPlan = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const importData = JSON.parse(text);
+
+      // Generate new IDs for the imported plan and its components
+      const newPlanId = uuidv4();
+
+      // Create new plan
+      const newPlan = {
+        id: newPlanId,
+        name: `${importData.plan.name} (Imported)`,
+        startDate: new Date(importData.plan.startDate),
+        endDate: new Date(importData.plan.endDate),
+      };
+
+      // Add the new plan
+      await addPlan(newPlan);
+
+      // Set the current plan ID immediately
+      setCurrentPlanId(newPlanId);
+
+      // Create a mapping of old to new IDs for engineers and projects
+      const engineerIdMap = {};
+      const projectIdMap = {};
+
+      // Initialize stores for the new plan
+      await useEngineerStore.getState().initializeEngineers(newPlanId);
+
+      // Import engineers first and build ID mapping
+      const engineerPromises = importData.engineers.map((engineer) => {
+        const oldId = engineer.id;
+        const newId = uuidv4();
+        engineerIdMap[oldId] = newId;
+
+        const newEngineer = {
+          ...engineer,
+          id: newId,
+          planId: newPlanId,
+          allocations: [], // Reset allocations as they'll be set via project updates
+        };
+        return useEngineerStore.getState().addEngineer(newEngineer);
+      });
+
+      await Promise.all(engineerPromises);
+
+      console.log("Importing projects:", importData.projects); // Debug log
+
+      // Initialize project store for the new plan
+      await useProjectStore.getState().initializeProjects(newPlanId);
+
+      // Import projects with their allocations in a single step
+      const projectPromises = importData.projects.map((project) => {
+        const oldId = project.id;
+        const newId = uuidv4();
+        projectIdMap[oldId] = newId;
+
+        // Map the allocations with new IDs if they exist
+        const newAllocations = project.allocations
+          ? project.allocations.map((allocation) => ({
+              engineerId: engineerIdMap[allocation.engineerId],
+              projectId: newId,
+              startDate: new Date(allocation.startDate),
+              endDate: new Date(allocation.endDate),
+              percentage: allocation.percentage,
+            }))
+          : [];
+
+        const newProject = {
+          id: newId,
+          name: project.name,
+          description: project.description,
+          estimatedHours: project.estimatedHours,
+          startAfter: new Date(project.startAfter),
+          endBefore: new Date(project.endBefore),
+          priority: project.priority,
+          planId: newPlanId,
+          allocations: newAllocations,
+        };
+
+        return useProjectStore.getState().addProject(newProject);
+      });
+
+      await Promise.all(projectPromises);
+
+      // Reset the file input
+      event.target.value = "";
+    } catch (error) {
+      console.error("Error importing plan:", error);
+      alert("Error importing plan. Please check the file format.");
+    }
   };
 
   return (
@@ -127,14 +248,7 @@ export default function PlanSelector() {
                 type="button"
                 onClick={() => {
                   const plan = plans.find((p) => p.id === currentPlanId);
-                  if (
-                    window.confirm(
-                      `Delete plan "${plan.name}" and all its data?`,
-                    )
-                  ) {
-                    setCurrentPlanId(null);
-                    removePlan(plan.id);
-                  }
+                  handleDeletePlan(plan.id, plan.name);
                 }}
                 className="p-2 text-gray-400 hover:text-red-600 rounded-md hover:bg-gray-100"
                 title="Delete current plan"
@@ -142,14 +256,25 @@ export default function PlanSelector() {
                 <TrashIcon className="h-5 w-5" />
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center p-2 rounded-md text-white bg-blue-600 hover:bg-blue-700"
-              title="Add new plan"
-            >
-              <PlusIcon className="h-5 w-5" />
-            </button>
+            <div className="flex space-x-2">
+              <label className="inline-flex items-center p-2 rounded-md text-white bg-green-600 hover:bg-green-700 cursor-pointer">
+                <ArrowUpTrayIcon className="h-5 w-5" />
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleImportPlan}
+                  className="hidden"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(true)}
+                className="inline-flex items-center p-2 rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                title="Add new plan"
+              >
+                <PlusIcon className="h-5 w-5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -171,18 +296,7 @@ export default function PlanSelector() {
                 {plan.name}
               </button>
               <button
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      `Delete plan "${plan.name}" and all its data?`,
-                    )
-                  ) {
-                    if (currentPlanId === plan.id) {
-                      setCurrentPlanId(null);
-                    }
-                    removePlan(plan.id);
-                  }
-                }}
+                onClick={() => handleDeletePlan(plan.id, plan.name)}
                 className="ml-2 p-1 text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100"
                 title="Delete plan"
               >
@@ -190,13 +304,25 @@ export default function PlanSelector() {
               </button>
             </div>
           ))}
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center px-3 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-          >
-            <PlusIcon className="h-4 w-4 mr-1" />
-            New Plan
-          </button>
+          <div className="flex space-x-2">
+            <label className="inline-flex items-center px-3 py-2 rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700 cursor-pointer">
+              <ArrowUpTrayIcon className="h-4 w-4 mr-1" />
+              Import Plan
+              <input
+                type="file"
+                accept=".json"
+                onChange={handleImportPlan}
+                className="hidden"
+              />
+            </label>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="inline-flex items-center px-3 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+            >
+              <PlusIcon className="h-4 w-4 mr-1" />
+              New Plan
+            </button>
+          </div>
         </nav>
       </div>
       {isModalOpen && (
