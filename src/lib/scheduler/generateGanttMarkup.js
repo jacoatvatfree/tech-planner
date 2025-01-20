@@ -163,21 +163,8 @@ export function generateGanttMarkup(
             Math.ceil(project.estimatedHours / hoursPerDay),
           );
 
-          // Calculate calendar days needed to complete the work days
-          let endDate = new Date(startDate);
-          let workDaysCount = 0;
-
-          while (workDaysCount < requiredWorkDays) {
-            endDate.setDate(endDate.getDate() + 1);
-            if (!dateUtils.isWeekend(endDate)) {
-              workDaysCount++;
-            }
-          }
-
-          // Calculate total calendar days between start and end
-          const days = Math.round(
-            (endDate - startDate) / (1000 * 60 * 60 * 24),
-          );
+          // Just use the required work days - Mermaid will handle weekend scheduling
+          const days = requiredWorkDays;
 
           const escapedEngineerName = engineer.name.replace(/[:#]/g, " ");
           const percentageLabel =
