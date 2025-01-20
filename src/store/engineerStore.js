@@ -11,13 +11,7 @@ const getInitialState = (planId) => {
 const useEngineerStore = create((set, get) => ({
   engineers: [],
   initializeEngineers: (planId) => {
-    const initialData = getInitialState(planId);
-    console.log("Initializing Engineers for Plan:", planId, initialData);
-    const currentEngineers = get().engineers;
-    // Only set if we have new data or no current engineers
-    if (initialData.length > 0 || currentEngineers.length === 0) {
-      set({ engineers: initialData });
-    }
+    set({ engineers: getInitialState(planId) });
   },
   addEngineer: (engineer) =>
     set((state) => {

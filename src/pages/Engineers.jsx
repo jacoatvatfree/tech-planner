@@ -20,6 +20,7 @@ export default function Engineers() {
     if (currentPlanId) {
       initializeEngineers(currentPlanId);
     }
+    console.log(currentPlanId);
   }, [currentPlanId, initializeEngineers]);
 
   const handleAddEngineer = (engineer) => {

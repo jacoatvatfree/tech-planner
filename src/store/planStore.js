@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { create } from "zustand";
 
 const STORAGE_KEY = "plans_data";
@@ -19,16 +20,14 @@ const usePlanStore = create((set, get) => ({
       const storedCurrentPlanId = localStorage.getItem(CURRENT_PLAN_KEY);
       return {
         ...state,
-        currentPlanId: storedCurrentPlanId
-          ? parseInt(storedCurrentPlanId, 10)
-          : null,
+        currentPlanId: storedCurrentPlanId ? storedCurrentPlanId : null,
         initialized: true,
       };
     }),
   addPlan: (plan) =>
     set((state) => {
       const newState = {
-        plans: [...state.plans, { ...plan, id: Date.now() }],
+        plans: [...state.plans, { id: uuidv4(), ...plan }],
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newState.plans));
       return newState;
