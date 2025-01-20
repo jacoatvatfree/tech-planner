@@ -4,8 +4,7 @@ export function generateGanttMarkup(
   assignments,
   engineers,
   projects,
-  planStartDate,
-  planEndDate,
+  plan,
   viewType = "resource", // 'resource' or 'project'
 ) {
   console.log("Generating Gantt Markup with:", {
@@ -13,29 +12,32 @@ export function generateGanttMarkup(
     engineersCount: engineers?.length,
     projectsCount: projects?.length,
     engineers: engineers,
-    planStartDate,
-    planEndDate,
+    planStartDate: plan.startDate,
+    planEndDate: plan.endDate,
   });
 
   // Create safe dates first
-  const safeStartDate = planStartDate ? new Date(planStartDate) : new Date();
-  const safeEndDate = planEndDate ? new Date(planEndDate) : new Date();
+  const safeStartDate = plan.startDate ? new Date(plan.startDate) : new Date();
+  const safeEndDate = plan.endDate ? new Date(plan.endDate) : new Date();
 
   // Basic validation
   if (!assignments?.length || !engineers?.length || !projects?.length) {
     return `gantt
       dateFormat YYYY-MM-DD
-      title Resource Schedule
+      title ${plan.name} - Resource Planner
       section No Data
       No assignments found :2024-01-01, 1d`;
   }
 
   // Check for invalid dates
   if (isNaN(safeStartDate.getTime()) || isNaN(safeEndDate.getTime())) {
-    console.error("Invalid dates received:", { planStartDate, planEndDate });
+    console.error("Invalid dates received:", {
+      planStartDate: plan.startDate,
+      planEndDate: plan.endDate,
+    });
     return `gantt
     dateFormat YYYY-MM-DD
-    title Resource Schedule
+    title ${plan.name} - Resource Planner
     section Error
     Invalid dates :2024-01-01, 1d`;
   }
@@ -43,7 +45,7 @@ export function generateGanttMarkup(
   // Initialize markup
   let markup = `gantt
     dateFormat YYYY-MM-DD
-    title Resource Schedule
+    title ${plan.name} - Resource Planner
     axisFormat %Y-%m-%d
     tickInterval 1week
     excludes weekends

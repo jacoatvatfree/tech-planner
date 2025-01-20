@@ -77,15 +77,7 @@ export default function GanttView() {
             setScheduleData(null);
 
             console.log("end date", currentPlan);
-            setMarkup(
-              generateGanttMarkup(
-                [],
-                [],
-                [],
-                currentPlan?.startDate,
-                currentPlan?.endDate,
-              ),
-            );
+            setMarkup(generateGanttMarkup([], [], [], currentPlan));
           }
           return;
         }
@@ -112,8 +104,7 @@ export default function GanttView() {
           result?.assignments || [],
           planEngineers,
           planProjects,
-          currentPlan?.startDate,
-          currentPlan?.endDate,
+          currentPlan,
           viewType,
         );
 
