@@ -48,7 +48,7 @@ function Layout() {
   }
   return (
     <div className="min-h-screen bg-gray-100">
-      <nav className="bg-white shadow-sm">
+      <nav className="bg-white shadow-sm print:hidden">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 justify-between">
             <div className="flex">
@@ -74,7 +74,7 @@ function Layout() {
         </div>
       </nav>
 
-      <div className="border-b border-gray-200 bg-white">
+      <div className="border-b border-gray-200 bg-white print:hidden">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <PlanSelector />
         </div>

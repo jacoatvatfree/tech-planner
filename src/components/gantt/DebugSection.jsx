@@ -28,7 +28,7 @@ export function DebugSection() {
   }, [currentPlanId, plans, projects, engineers]);
 
   return (
-    <div className="border rounded-lg border-gray-200">
+    <div className="border rounded-lg border-gray-200 print:hidden">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full px-4 py-2 flex items-center justify-between text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"

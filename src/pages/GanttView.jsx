@@ -43,6 +43,9 @@ export default function GanttView() {
     if (!currentPlan) {
       setError("No plan selected");
       setIsLoading(false);
+      document.title = "Resource Planner";
+    } else {
+      document.title = `${currentPlan.name} - Resource Planner`;
     }
   }, [currentPlan]);
 
@@ -163,7 +166,7 @@ export default function GanttView() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center space-x-4 p-4">
+      <div className="flex items-center space-x-4 p-4 print:hidden">
         <div className="flex items-center space-x-2">
           <input
             type="radio"

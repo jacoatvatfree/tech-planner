@@ -68,7 +68,7 @@ export default function GanttChart({ markup }) {
         className="mermaid-container overflow-x-auto bg-white p-4 rounded-lg border border-gray-200"
       />
 
-      <div className="p-4 bg-gray-50 rounded-lg">
+      <div className="p-4 bg-gray-50 rounded-lg print:hidden">
         <div className="space-y-4">
           <div>
             <div className="flex justify-between items-center">
