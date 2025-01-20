@@ -1,16 +1,33 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { usePlanStore } from "../store/planStore";
 import { useProjectStore } from "../store/projectStore";
 import { useEngineerStore } from "../store/engineerStore";
-import { calculateQuarterlyCapacity } from "../lib/scheduler/calculateQuarterlyCapacity";
+import { calculatePlanCapacity } from "../lib/scheduler/calculatePlanCapacity";
 import { calculateSchedule } from "../lib/scheduler/calculateSchedule";
 import { v4 as uuidv4 } from "uuid";
 
 export default function Dashboard() {
-  const { currentPlanId, plans, addPlan } = usePlanStore();
+  const { currentPlanId, plans, currentPlan: getCurrentPlan } = usePlanStore();
   const { projects, initializeProjects } = useProjectStore();
   const { engineers, initializeEngineers } = useEngineerStore();
+  const [utilization, setUtilization] = useState({
+    totalCapacityHours: 0,
+    assignedHours: 0,
+    utilizationPercentage: 0,
+  });
+  const [scheduleData, setScheduleData] = useState();
 
+  const planProjects = React.useMemo(
+    () => projects.filter((p) => p.planId === currentPlanId),
+    [projects, currentPlanId],
+  );
+
+  const planEngineers = React.useMemo(
+    () => engineers.filter((e) => e.planId === currentPlanId),
+    [engineers, currentPlanId],
+  );
+
+  // Initialize data when plan changes
   useEffect(() => {
     if (currentPlanId) {
       initializeProjects(currentPlanId);
@@ -18,11 +35,32 @@ export default function Dashboard() {
     }
   }, [currentPlanId, initializeProjects, initializeEngineers]);
 
-  const planProjects = projects.filter((p) => p.planId === currentPlanId);
-  const planEngineers = engineers.filter((e) => e.planId === currentPlanId);
-  const scheduleData = calculateSchedule(planProjects, planEngineers);
-  const { totalCapacityHours, assignedHours, utilizationPercentage } =
-    calculateQuarterlyCapacity(engineers, scheduleData);
+  // Calculate schedule when projects or engineers change
+  const currentScheduleData = React.useMemo(
+    () => calculateSchedule(planProjects, planEngineers),
+    [planProjects, planEngineers],
+  );
+
+  // Update schedule state
+  useEffect(() => {
+    setScheduleData(currentScheduleData);
+  }, [currentScheduleData]);
+
+  // Calculate utilization
+  useEffect(() => {
+    if (currentPlanId && planEngineers.length > 0 && scheduleData) {
+      const plan = getCurrentPlan();
+      if (plan) {
+        const capacityData = calculatePlanCapacity(
+          planEngineers,
+          scheduleData,
+          plan,
+          projects,
+        );
+        setUtilization(capacityData);
+      }
+    }
+  }, [currentPlanId, planEngineers, scheduleData, getCurrentPlan, projects]);
 
   const handleExportPlan = () => {
     const currentPlan = plans.find((p) => p.id === currentPlanId);
@@ -47,61 +85,6 @@ export default function Dashboard() {
     URL.revokeObjectURL(url);
   };
 
-  // const handleImportPlan = async (event) => {
-  //   const file = event.target.files[0];
-  //   if (!file) return;
-  //
-  //   try {
-  //     const text = await file.text();
-  //     const importData = JSON.parse(text);
-  //
-  //     // Generate new IDs for the imported plan and its components
-  //     const newPlanId = uuidv4();
-  //
-  //     // Create new plan
-  //     const newPlan = {
-  //       ...importData.plan,
-  //       id: newPlanId,
-  //       name: `${importData.plan.name} (Imported)`,
-  //     };
-  //
-  //     // Add the new plan
-  //     await addPlan(newPlan);
-  //
-  //     // Initialize stores for the new plan
-  //     await initializeEngineers(newPlanId);
-  //     await initializeProjects(newPlanId);
-  //
-  //     // Import engineers with new IDs and updated planId
-  //     const engineerPromises = importData.engineers.map((engineer) => {
-  //       const newEngineer = {
-  //         ...engineer,
-  //         id: uuidv4(),
-  //         planId: newPlanId,
-  //       };
-  //       return useEngineerStore.getState().addEngineer(newEngineer);
-  //     });
-  //
-  //     // Import projects with new IDs and updated planId
-  //     const projectPromises = importData.projects.map((project) => {
-  //       const newProject = {
-  //         ...project,
-  //         id: uuidv4(),
-  //         planId: newPlanId,
-  //       };
-  //       return useProjectStore.getState().addProject(newProject);
-  //     });
-  //
-  //     await Promise.all([...engineerPromises, ...projectPromises]);
-  //
-  //     // Reset the file input
-  //     event.target.value = "";
-  //   } catch (error) {
-  //     console.error("Error importing plan:", error);
-  //     alert("Error importing plan. Please check the file format.");
-  //   }
-  // };
-
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
@@ -113,15 +96,6 @@ export default function Dashboard() {
           >
             Export Plan
           </button>
-          {/* <label className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded cursor-pointer"> */}
-          {/*   Import Plan */}
-          {/*   <input */}
-          {/*     type="file" */}
-          {/*     accept=".json" */}
-          {/*     onChange={handleImportPlan} */}
-          {/*     className="hidden" */}
-          {/*   /> */}
-          {/* </label> */}
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
@@ -134,27 +108,29 @@ export default function Dashboard() {
                   Capacity Utilization
                 </span>
                 <span className="text-sm font-medium text-gray-700">
-                  {utilizationPercentage}%
+                  {utilization.utilizationPercentage}%
                 </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2.5">
                 <div
                   className={`h-2.5 rounded-full ${
-                    utilizationPercentage > 100
+                    utilization.utilizationPercentage > 100
                       ? "bg-red-600"
-                      : utilizationPercentage > 85
+                      : utilization.utilizationPercentage > 85
                         ? "bg-yellow-400"
                         : "bg-green-600"
                   }`}
-                  style={{ width: `${Math.min(utilizationPercentage, 100)}%` }}
+                  style={{
+                    width: `${Math.min(utilization.utilizationPercentage, 100)}%`,
+                  }}
                 ></div>
               </div>
             </div>
             <p className="text-sm text-gray-600">
-              Total Capacity: {Math.round(totalCapacityHours)} hours
+              Total Capacity: {Math.round(utilization.totalCapacityHours)} hours
             </p>
             <p className="text-sm text-gray-600">
-              Assigned Hours: {Math.round(assignedHours)} hours
+              Assigned Hours: {Math.round(utilization.assignedHours)} hours
             </p>
           </div>
         </div>
