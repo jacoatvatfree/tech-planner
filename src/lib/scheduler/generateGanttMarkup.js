@@ -49,7 +49,7 @@ export function generateGanttMarkup(
     excludes weekends
     
     section Start
-        s :milestone, ${safeStartDate.toISOString().split("T")[0]}, 0d
+        s :milestone, ${dateUtils.toISOLocalString(safeStartDate)}, 0d
     `;
 
   if (viewType === "resource") {
@@ -63,7 +63,7 @@ export function generateGanttMarkup(
         .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
 
       if (engineerAssignments.length === 0) {
-        markup += `    No assignments :${new Date().toISOString().split("T")[0]}, 1d\n`;
+        markup += `    No assignments :${dateUtils.toISOLocalString(new Date())}, 1d\n`;
         return;
       }
 
@@ -90,12 +90,15 @@ export function generateGanttMarkup(
             return sum + (eng.weeklyHours || 40) * (percentage / 100);
           }, 0);
 
-          // Calculate duration in days
+          // Calculate duration in working days
           const hoursPerDay = totalWeeklyHours / 5;
-          const days = Math.max(
+          const requiredWorkDays = Math.max(
             1,
             Math.ceil(project.estimatedHours / hoursPerDay),
           );
+
+          // Just use the required work days - Mermaid will handle weekend scheduling
+          const days = requiredWorkDays;
 
           const escapedProjectName = project.name.replace(/[:#]/g, " ");
           const percentageLabel =
@@ -110,7 +113,7 @@ export function generateGanttMarkup(
               : project.percentComplete > 0
                 ? "active,"
                 : "";
-          markup += `        ${escapedProjectName} (${Math.round(project.percentComplete)}%) :${completionLabel}${shortId}, ${startDate.toISOString().split("T")[0]}, ${days}d\n`;
+          markup += `        ${escapedProjectName} (${Math.round(project.percentComplete || 0)}%) :${completionLabel}${shortId}, ${dateUtils.toISOLocalString(startDate)}, ${days}d\n`;
         } catch (error) {
           console.warn(
             `Skipping invalid assignment for ${engineer.name}:`,
@@ -122,7 +125,7 @@ export function generateGanttMarkup(
   } else if (viewType === "project") {
     // Generate sections for each project
     projects.forEach((project) => {
-      markup += `\n    section ${project.name} (${Math.round(project.percentComplete)}%)\n`;
+      markup += `\n    section ${project.name} (${Math.round(project.percentComplete || 0)}%)\n`;
 
       // Get all assignments for this project and sort by start date
       const projectAssignments = assignments
@@ -130,7 +133,7 @@ export function generateGanttMarkup(
         .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
 
       if (projectAssignments.length === 0) {
-        markup += `    No assignments :${new Date().toISOString().split("T")[0]}, 1d\n`;
+        markup += `    No assignments :${dateUtils.toISOLocalString(new Date())}, 1d\n`;
         return;
       }
 
@@ -153,11 +156,27 @@ export function generateGanttMarkup(
             return sum + (eng.weeklyHours || 40) * (percentage / 100);
           }, 0);
 
-          // Calculate duration in days
+          // Calculate duration in working days
           const hoursPerDay = totalWeeklyHours / 5;
-          const days = Math.max(
+          const requiredWorkDays = Math.max(
             1,
             Math.ceil(project.estimatedHours / hoursPerDay),
+          );
+
+          // Calculate calendar days needed to complete the work days
+          let endDate = new Date(startDate);
+          let workDaysCount = 0;
+
+          while (workDaysCount < requiredWorkDays) {
+            endDate.setDate(endDate.getDate() + 1);
+            if (!dateUtils.isWeekend(endDate)) {
+              workDaysCount++;
+            }
+          }
+
+          // Calculate total calendar days between start and end
+          const days = Math.round(
+            (endDate - startDate) / (1000 * 60 * 60 * 24),
           );
 
           const escapedEngineerName = engineer.name.replace(/[:#]/g, " ");
@@ -174,7 +193,7 @@ export function generateGanttMarkup(
                 ? "active,"
                 : "";
 
-          markup += `        ${escapedEngineerName}${percentageLabel} :${completionLabel}${shortId}, ${startDate.toISOString().split("T")[0]}, ${days}d\n`;
+          markup += `        ${escapedEngineerName}${percentageLabel} :${completionLabel}${shortId}, ${dateUtils.toISOLocalString(startDate)}, ${days}d\n`;
         } catch (error) {
           console.warn(
             `Skipping invalid assignment for ${project.name}:`,
@@ -185,7 +204,7 @@ export function generateGanttMarkup(
     });
   }
   markup += "\n    section End\n";
-  markup += `        e :milestone, ${safeEndDate.toISOString().split("T")[0]}, 0d\n\n`;
+  markup += `        e :milestone, ${dateUtils.toISOLocalString(safeEndDate)}, 0d\n\n`;
 
   return markup;
 }

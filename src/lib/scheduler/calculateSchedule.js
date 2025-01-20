@@ -22,9 +22,9 @@ const schedulingUtils = {
       .filter((a) => a.engineerId === engineerId)
       .filter((a) => {
         const assignmentStart = new Date(a.startDate);
-        const assignmentEnd = dateUtils.addBusinessDays(
+        const assignmentEnd = dateUtils.addWorkingDays(
           assignmentStart,
-          a.weeksNeeded * 5,
+          Math.ceil(a.weeksNeeded * 5),
         );
         return !(endDate <= assignmentStart || startDate >= assignmentEnd);
       });
@@ -151,9 +151,9 @@ export function calculateSchedule(projects, engineers) {
         const engineer = engineers.find((e) => e.id === allocation.engineerId);
         if (!engineer) return false;
 
-        const proposedEndDate = dateUtils.addBusinessDays(
+        const proposedEndDate = dateUtils.addWorkingDays(
           candidateDate,
-          weeksNeeded * 5,
+          Math.ceil(weeksNeeded * 5),
         );
 
         const overlappingAssignments =

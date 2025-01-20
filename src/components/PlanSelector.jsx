@@ -144,7 +144,7 @@ export default function PlanSelector() {
       // Create new plan
       const newPlan = {
         id: newPlanId,
-        name: `${importData.plan.name} (Imported)`,
+        name: `${importData.plan.name}`,
         startDate: new Date(importData.plan.startDate),
         endDate: new Date(importData.plan.endDate),
       };

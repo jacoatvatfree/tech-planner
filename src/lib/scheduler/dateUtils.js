@@ -5,6 +5,11 @@ export const dateUtils = {
     return result;
   },
 
+  toISOLocalString: (d) => {
+    d.setTime(d.getTime() - d.getTimezoneOffset() * 60000);
+    return d.toISOString().split("T")[0];
+  },
+
   isWeekend: (date) => {
     const day = date.getDay();
     return day === 0 || day === 6;
@@ -33,5 +38,19 @@ export const dateUtils = {
     const result = new Date(date);
     result.setDate(result.getDate() + Math.ceil(days));
     return dateUtils.getNextWeekday(result);
+  },
+
+  addWorkingDays: (date, workDays) => {
+    const result = new Date(date);
+    let daysAdded = 0;
+
+    while (daysAdded < workDays) {
+      result.setDate(result.getDate() + 1);
+      if (!dateUtils.isWeekend(result)) {
+        daysAdded++;
+      }
+    }
+
+    return result;
   },
 };
