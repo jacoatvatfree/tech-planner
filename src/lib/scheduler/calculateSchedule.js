@@ -1,30 +1,4 @@
-// Date utility functions
-const dateUtils = {
-  normalize: (date) => {
-    const result = new Date(date);
-    result.setHours(0, 0, 0, 0);
-    return result;
-  },
-
-  isWeekend: (date) => {
-    const day = date.getDay();
-    return day === 0 || day === 6;
-  },
-
-  getNextWeekday: (date) => {
-    const result = new Date(date);
-    while (dateUtils.isWeekend(result)) {
-      result.setDate(result.getDate() + 1);
-    }
-    return result;
-  },
-
-  addBusinessDays: (date, days) => {
-    const result = new Date(date);
-    result.setDate(result.getDate() + Math.ceil(days));
-    return dateUtils.getNextWeekday(result);
-  },
-};
+import { dateUtils } from "./dateUtils";
 
 // Project scheduling helper functions
 const schedulingUtils = {

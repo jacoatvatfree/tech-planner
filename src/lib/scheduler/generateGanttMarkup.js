@@ -1,3 +1,5 @@
+import { dateUtils } from "./dateUtils";
+
 export function generateGanttMarkup(
   assignments,
   engineers,
@@ -71,8 +73,11 @@ export function generateGanttMarkup(
 
         try {
           // Format dates
-          const startDate = new Date(assignment.startDate);
+          let startDate = new Date(assignment.startDate);
           if (isNaN(startDate.getTime())) throw new Error("Invalid date");
+
+          // Ensure start date is not on a weekend
+          startDate = dateUtils.getNextWeekday(startDate);
 
           // Calculate total weekly hours for the project
           const projectAssignments = assignments.filter(
@@ -128,8 +133,11 @@ export function generateGanttMarkup(
         if (!engineer) return;
 
         try {
-          const startDate = new Date(assignment.startDate);
+          let startDate = new Date(assignment.startDate);
           if (isNaN(startDate.getTime())) throw new Error("Invalid date");
+
+          // Ensure start date is not on a weekend
+          startDate = dateUtils.getNextWeekday(startDate);
 
           // Calculate total weekly hours for the project
           const totalWeeklyHours = projectAssignments.reduce((sum, a) => {
