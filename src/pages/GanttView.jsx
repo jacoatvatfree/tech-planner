@@ -72,6 +72,8 @@ export default function GanttView() {
         if (!planProjects?.length || !planEngineers?.length) {
           if (isMounted) {
             setScheduleData(null);
+
+            console.log("end date", currentPlan);
             setMarkup(
               generateGanttMarkup(
                 [],

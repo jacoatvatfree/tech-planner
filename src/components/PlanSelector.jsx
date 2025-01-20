@@ -217,7 +217,6 @@ export default function PlanSelector() {
       });
 
       await Promise.all(projectPromises);
-
       // Reset the file input
       event.target.value = "";
     } catch (error) {

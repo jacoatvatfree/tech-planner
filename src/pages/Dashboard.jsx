@@ -47,60 +47,60 @@ export default function Dashboard() {
     URL.revokeObjectURL(url);
   };
 
-  const handleImportPlan = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    try {
-      const text = await file.text();
-      const importData = JSON.parse(text);
-
-      // Generate new IDs for the imported plan and its components
-      const newPlanId = uuidv4();
-
-      // Create new plan
-      const newPlan = {
-        ...importData.plan,
-        id: newPlanId,
-        name: `${importData.plan.name} (Imported)`,
-      };
-
-      // Add the new plan
-      await addPlan(newPlan);
-
-      // Initialize stores for the new plan
-      await initializeEngineers(newPlanId);
-      await initializeProjects(newPlanId);
-
-      // Import engineers with new IDs and updated planId
-      const engineerPromises = importData.engineers.map((engineer) => {
-        const newEngineer = {
-          ...engineer,
-          id: uuidv4(),
-          planId: newPlanId,
-        };
-        return useEngineerStore.getState().addEngineer(newEngineer);
-      });
-
-      // Import projects with new IDs and updated planId
-      const projectPromises = importData.projects.map((project) => {
-        const newProject = {
-          ...project,
-          id: uuidv4(),
-          planId: newPlanId,
-        };
-        return useProjectStore.getState().addProject(newProject);
-      });
-
-      await Promise.all([...engineerPromises, ...projectPromises]);
-
-      // Reset the file input
-      event.target.value = "";
-    } catch (error) {
-      console.error("Error importing plan:", error);
-      alert("Error importing plan. Please check the file format.");
-    }
-  };
+  // const handleImportPlan = async (event) => {
+  //   const file = event.target.files[0];
+  //   if (!file) return;
+  //
+  //   try {
+  //     const text = await file.text();
+  //     const importData = JSON.parse(text);
+  //
+  //     // Generate new IDs for the imported plan and its components
+  //     const newPlanId = uuidv4();
+  //
+  //     // Create new plan
+  //     const newPlan = {
+  //       ...importData.plan,
+  //       id: newPlanId,
+  //       name: `${importData.plan.name} (Imported)`,
+  //     };
+  //
+  //     // Add the new plan
+  //     await addPlan(newPlan);
+  //
+  //     // Initialize stores for the new plan
+  //     await initializeEngineers(newPlanId);
+  //     await initializeProjects(newPlanId);
+  //
+  //     // Import engineers with new IDs and updated planId
+  //     const engineerPromises = importData.engineers.map((engineer) => {
+  //       const newEngineer = {
+  //         ...engineer,
+  //         id: uuidv4(),
+  //         planId: newPlanId,
+  //       };
+  //       return useEngineerStore.getState().addEngineer(newEngineer);
+  //     });
+  //
+  //     // Import projects with new IDs and updated planId
+  //     const projectPromises = importData.projects.map((project) => {
+  //       const newProject = {
+  //         ...project,
+  //         id: uuidv4(),
+  //         planId: newPlanId,
+  //       };
+  //       return useProjectStore.getState().addProject(newProject);
+  //     });
+  //
+  //     await Promise.all([...engineerPromises, ...projectPromises]);
+  //
+  //     // Reset the file input
+  //     event.target.value = "";
+  //   } catch (error) {
+  //     console.error("Error importing plan:", error);
+  //     alert("Error importing plan. Please check the file format.");
+  //   }
+  // };
 
   return (
     <div>
@@ -113,15 +113,15 @@ export default function Dashboard() {
           >
             Export Plan
           </button>
-          <label className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded cursor-pointer">
-            Import Plan
-            <input
-              type="file"
-              accept=".json"
-              onChange={handleImportPlan}
-              className="hidden"
-            />
-          </label>
+          {/* <label className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded cursor-pointer"> */}
+          {/*   Import Plan */}
+          {/*   <input */}
+          {/*     type="file" */}
+          {/*     accept=".json" */}
+          {/*     onChange={handleImportPlan} */}
+          {/*     className="hidden" */}
+          {/*   /> */}
+          {/* </label> */}
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
