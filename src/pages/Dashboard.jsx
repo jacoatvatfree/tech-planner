@@ -41,26 +41,37 @@ export default function Dashboard() {
     [planProjects, planEngineers],
   );
 
-  // Update schedule state
+  // Update schedule state and calculate utilization
   useEffect(() => {
     setScheduleData(currentScheduleData);
-  }, [currentScheduleData]);
 
-  // Calculate utilization
-  useEffect(() => {
-    if (currentPlanId && planEngineers.length > 0 && scheduleData) {
-      const plan = getCurrentPlan();
-      if (plan) {
-        const capacityData = calculatePlanCapacity(
-          planEngineers,
-          scheduleData,
-          plan,
-          projects,
-        );
-        setUtilization(capacityData);
-      }
+    const plan = getCurrentPlan();
+    if (!currentPlanId || !planEngineers.length || !plan) {
+      // Reset utilization when there's no valid data
+      setUtilization({
+        totalCapacityHours: 0,
+        assignedHours: 0,
+        utilizationPercentage: 0,
+      });
+      return;
     }
-  }, [currentPlanId, planEngineers, scheduleData, getCurrentPlan, projects]);
+
+    if (currentScheduleData) {
+      const capacityData = calculatePlanCapacity(
+        planEngineers,
+        currentScheduleData,
+        plan,
+        planProjects,
+      );
+      setUtilization(capacityData);
+    }
+  }, [
+    currentPlanId,
+    currentScheduleData,
+    planEngineers,
+    planProjects,
+    getCurrentPlan,
+  ]);
 
   const handleExportPlan = () => {
     const currentPlan = plans.find((p) => p.id === currentPlanId);
