@@ -48,7 +48,7 @@ export function generateGanttMarkup(
     tickInterval 1week
     excludes weekends
     
-        section Start
+    section Start
         s :milestone, ${safeStartDate.toISOString().split("T")[0]}, 0d
     `;
 
@@ -104,7 +104,13 @@ export function generateGanttMarkup(
               : "";
           const shortId = assignment.projectId.substring(0, 8);
 
-          markup += `    ${escapedProjectName}${percentageLabel} :${shortId}, ${startDate.toISOString().split("T")[0]}, ${days}d\n`;
+          const completionLabel =
+            project.percentComplete === 100
+              ? `done,`
+              : project.percentComplete > 0
+                ? "active,"
+                : "";
+          markup += `        ${escapedProjectName} (${Math.round(project.percentComplete)}%) :${completionLabel}${shortId}, ${startDate.toISOString().split("T")[0]}, ${days}d\n`;
         } catch (error) {
           console.warn(
             `Skipping invalid assignment for ${engineer.name}:`,
@@ -116,7 +122,7 @@ export function generateGanttMarkup(
   } else if (viewType === "project") {
     // Generate sections for each project
     projects.forEach((project) => {
-      markup += `\n    section ${project.name}\n`;
+      markup += `\n    section ${project.name} (${Math.round(project.percentComplete)}%)\n`;
 
       // Get all assignments for this project and sort by start date
       const projectAssignments = assignments
@@ -161,7 +167,14 @@ export function generateGanttMarkup(
               : "";
           const shortId = assignment.projectId.substring(0, 8);
 
-          markup += `    ${escapedEngineerName}${percentageLabel} :${shortId}, ${startDate.toISOString().split("T")[0]}, ${days}d\n`;
+          const completionLabel =
+            project.percentComplete === 100
+              ? `done,`
+              : project.percentComplete > 0
+                ? "active,"
+                : "";
+
+          markup += `        ${escapedEngineerName}${percentageLabel} :${completionLabel}${shortId}, ${startDate.toISOString().split("T")[0]}, ${days}d\n`;
         } catch (error) {
           console.warn(
             `Skipping invalid assignment for ${project.name}:`,
@@ -172,7 +185,7 @@ export function generateGanttMarkup(
     });
   }
   markup += "\n    section End\n";
-  markup += `    e :milestone, ${safeEndDate.toISOString().split("T")[0]}, 0d\n\n`;
+  markup += `        e :milestone, ${safeEndDate.toISOString().split("T")[0]}, 0d\n\n`;
 
   return markup;
 }

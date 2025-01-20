@@ -21,6 +21,7 @@ export const makeProject = ({
   endBefore = null,
   priority = 3,
   allocations = [],
+  percentComplete = 0,
 }) => ({
   id: uuidv4(),
   name,
@@ -30,6 +31,7 @@ export const makeProject = ({
   endBefore,
   priority,
   allocations,
+  percentComplete,
 });
 
 /**

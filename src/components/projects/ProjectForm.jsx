@@ -38,6 +38,7 @@ export default function ProjectForm({
           endBefore: "",
           priority: 999,
           allocations: [],
+          percentComplete: 0,
         },
   );
 
@@ -60,6 +61,7 @@ export default function ProjectForm({
         startAfter: formData.startAfter ? new Date(formData.startAfter) : null,
         endBefore: formData.endBefore ? new Date(formData.endBefore) : null,
         priority: Number(formData.priority),
+        percentComplete: Number(formData.percentComplete),
       }),
       description: formData.description,
       allocations: formData.allocations.map((allocation) => ({
@@ -212,6 +214,25 @@ export default function ProjectForm({
           className="form-input mt-1 block w-1/4 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
           min="1"
           required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Completion ({formData.percentComplete}%)
+        </label>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={formData.percentComplete || 0}
+          onChange={(e) =>
+            setFormData({
+              ...formData,
+              percentComplete: parseInt(e.target.value),
+            })
+          }
+          className="form-range w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
         />
       </div>
 
