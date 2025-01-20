@@ -3,7 +3,12 @@ import { makeProject } from "../../lib";
 import EngineerSelect from "../engineers/EngineerSelect";
 import { format } from "date-fns";
 
-export default function ProjectForm({ onSubmit, editingProject, onCancel }) {
+export default function ProjectForm({
+  onSubmit,
+  editingProject,
+  onCancel,
+  planStartDate,
+}) {
   const [formData, setFormData] = useState(
     editingProject
       ? {
@@ -19,7 +24,17 @@ export default function ProjectForm({ onSubmit, editingProject, onCancel }) {
           name: "",
           description: "",
           estimatedHours: 0,
-          startAfter: format(new Date(), "yyyy-MM-dd"),
+          startAfter: format(
+            planStartDate
+              ? new Date(
+                  Math.max(
+                    new Date().getTime(),
+                    new Date(planStartDate).getTime(),
+                  ),
+                )
+              : new Date(),
+            "yyyy-MM-dd",
+          ),
           endBefore: "",
           priority: 999,
           allocations: [],
@@ -36,7 +51,9 @@ export default function ProjectForm({ onSubmit, editingProject, onCancel }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    console.log("Form data before submit:", formData);
     const projectData = {
+      ...(editingProject ? { id: editingProject.id } : {}),
       ...makeProject({
         name: formData.name,
         estimatedHours: Number(formData.estimatedHours),
@@ -45,9 +62,15 @@ export default function ProjectForm({ onSubmit, editingProject, onCancel }) {
         priority: Number(formData.priority),
       }),
       description: formData.description,
-      allocations: formData.allocations,
+      allocations: formData.allocations.map((allocation) => ({
+        ...allocation,
+        startDate: new Date(allocation.startDate),
+        endDate: new Date(allocation.endDate),
+      })),
+      planId: editingProject?.planId,
     };
 
+    console.log("Project data being submitted:", projectData);
     onSubmit(projectData);
     resetForm();
   };
@@ -204,12 +227,28 @@ export default function ProjectForm({ onSubmit, editingProject, onCancel }) {
                 startDate.getTime() + formData.estimatedHours * 60 * 60 * 1000,
               );
 
-          const newAllocations = selectedEngineers.map((engineerId) => ({
-            engineerId,
-            startDate,
-            endDate,
-            percentage: 100,
-          }));
+          // Preserve existing allocations that are still selected
+          const existingAllocations = formData.allocations.filter(
+            (allocation) => selectedEngineers.includes(allocation.engineerId),
+          );
+
+          // Add new allocations for newly selected engineers
+          const newEngineerIds = selectedEngineers.filter(
+            (engineerId) =>
+              !formData.allocations.some(
+                (allocation) => allocation.engineerId === engineerId,
+              ),
+          );
+
+          const newAllocations = [
+            ...existingAllocations,
+            ...newEngineerIds.map((engineerId) => ({
+              engineerId,
+              startDate,
+              endDate,
+              percentage: 100,
+            })),
+          ];
 
           setFormData({
             ...formData,

@@ -1,15 +1,33 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { usePlanStore } from "../store/planStore";
 import { useProjectStore } from "../store/projectStore";
 import { useEngineerStore } from "../store/engineerStore";
-import { calculateQuarterlyCapacity } from "../lib/scheduler/calculateQuarterlyCapacity";
+import { calculatePlanCapacity } from "../lib/scheduler/calculatePlanCapacity";
 import { calculateSchedule } from "../lib/scheduler/calculateSchedule";
+import { v4 as uuidv4 } from "uuid";
 
 export default function Dashboard() {
-  const { currentPlanId } = usePlanStore();
+  const { currentPlanId, plans, currentPlan: getCurrentPlan } = usePlanStore();
   const { projects, initializeProjects } = useProjectStore();
   const { engineers, initializeEngineers } = useEngineerStore();
+  const [utilization, setUtilization] = useState({
+    totalCapacityHours: 0,
+    assignedHours: 0,
+    utilizationPercentage: 0,
+  });
+  const [scheduleData, setScheduleData] = useState();
 
+  const planProjects = React.useMemo(
+    () => projects.filter((p) => p.planId === currentPlanId),
+    [projects, currentPlanId],
+  );
+
+  const planEngineers = React.useMemo(
+    () => engineers.filter((e) => e.planId === currentPlanId),
+    [engineers, currentPlanId],
+  );
+
+  // Initialize data when plan changes
   useEffect(() => {
     if (currentPlanId) {
       initializeProjects(currentPlanId);
@@ -17,13 +35,69 @@ export default function Dashboard() {
     }
   }, [currentPlanId, initializeProjects, initializeEngineers]);
 
-  const assignments = calculateSchedule(projects, engineers);
-  const { totalCapacityHours, assignedHours, utilizationPercentage } =
-    calculateQuarterlyCapacity(engineers, assignments);
+  // Calculate schedule when projects or engineers change
+  const currentScheduleData = React.useMemo(
+    () => calculateSchedule(planProjects, planEngineers),
+    [planProjects, planEngineers],
+  );
+
+  // Update schedule state
+  useEffect(() => {
+    setScheduleData(currentScheduleData);
+  }, [currentScheduleData]);
+
+  // Calculate utilization
+  useEffect(() => {
+    if (currentPlanId && planEngineers.length > 0 && scheduleData) {
+      const plan = getCurrentPlan();
+      if (plan) {
+        const capacityData = calculatePlanCapacity(
+          planEngineers,
+          scheduleData,
+          plan,
+          projects,
+        );
+        setUtilization(capacityData);
+      }
+    }
+  }, [currentPlanId, planEngineers, scheduleData, getCurrentPlan, projects]);
+
+  const handleExportPlan = () => {
+    const currentPlan = plans.find((p) => p.id === currentPlanId);
+    if (!currentPlan) return;
+
+    const exportData = {
+      plan: currentPlan,
+      engineers: planEngineers,
+      projects: planProjects,
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `plan-${currentPlan.name}-${new Date().toISOString().split("T")[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-4">Dashboard</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold">Dashboard</h2>
+        <div className="flex gap-4">
+          <button
+            onClick={handleExportPlan}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Export Plan
+          </button>
+        </div>
+      </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-white shadow rounded-lg p-4">
           <h3 className="text-lg font-medium mb-4">Plan Resource Usage</h3>
@@ -34,27 +108,29 @@ export default function Dashboard() {
                   Capacity Utilization
                 </span>
                 <span className="text-sm font-medium text-gray-700">
-                  {utilizationPercentage}%
+                  {utilization.utilizationPercentage}%
                 </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2.5">
                 <div
                   className={`h-2.5 rounded-full ${
-                    utilizationPercentage > 100
+                    utilization.utilizationPercentage > 100
                       ? "bg-red-600"
-                      : utilizationPercentage > 85
-                      ? "bg-yellow-400"
-                      : "bg-green-600"
+                      : utilization.utilizationPercentage > 85
+                        ? "bg-yellow-400"
+                        : "bg-green-600"
                   }`}
-                  style={{ width: `${Math.min(utilizationPercentage, 100)}%` }}
+                  style={{
+                    width: `${Math.min(utilization.utilizationPercentage, 100)}%`,
+                  }}
                 ></div>
               </div>
             </div>
             <p className="text-sm text-gray-600">
-              Total Capacity: {Math.round(totalCapacityHours)} hours
+              Total Capacity: {Math.round(utilization.totalCapacityHours)} hours
             </p>
             <p className="text-sm text-gray-600">
-              Assigned Hours: {Math.round(assignedHours)} hours
+              Assigned Hours: {Math.round(utilization.assignedHours)} hours
             </p>
           </div>
         </div>

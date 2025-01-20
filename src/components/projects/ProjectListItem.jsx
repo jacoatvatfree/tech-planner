@@ -16,7 +16,7 @@ export default function ProjectListItem({ project, onEdit, onDragStart }) {
   };
 
   return (
-    <li
+    <div
       draggable="true"
       onDragStart={handleDragStart}
       className="px-6 py-3 cursor-move hover:bg-gray-50 border-b border-gray-100"
@@ -93,6 +93,6 @@ export default function ProjectListItem({ project, onEdit, onDragStart }) {
           </button>
         </div>
       </div>
-    </li>
+    </div>
   );
 }
