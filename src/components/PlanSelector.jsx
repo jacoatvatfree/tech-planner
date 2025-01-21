@@ -202,13 +202,10 @@ export default function PlanSelector() {
           : [];
 
         const newProject = {
+          ...project,
           id: newId,
-          name: project.name,
-          description: project.description,
-          estimatedHours: project.estimatedHours,
           startAfter: new Date(project.startAfter),
           endBefore: new Date(project.endBefore),
-          priority: project.priority,
           planId: newPlanId,
           allocations: newAllocations,
         };

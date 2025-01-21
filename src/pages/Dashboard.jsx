@@ -74,7 +74,7 @@ export default function Dashboard() {
   ]);
 
   const handleExportPlan = () => {
-    const currentPlan = plans.find((p) => p.id === currentPlanId);
+    const currentPlan = getCurrentPlan();
     if (!currentPlan) return;
 
     const exportData = {
