@@ -7,6 +7,26 @@ export default function ProjectList({ onEdit }) {
   const [draggedProject, setDraggedProject] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
 
+  const handleUpdateCompletion = (projectId, percentComplete) => {
+    const project = projects.find((p) => p.id === projectId);
+    if (project) {
+      updateProject({
+        ...project,
+        percentComplete,
+      });
+    }
+  };
+
+  const handleUpdateAllocations = (projectId, allocations) => {
+    const project = projects.find((p) => p.id === projectId);
+    if (project) {
+      updateProject({
+        ...project,
+        allocations,
+      });
+    }
+  };
+
   const handleDragOver = (e) => {
     e.preventDefault();
     const dragOverItem = e.target.closest("li");
@@ -95,6 +115,10 @@ export default function ProjectList({ onEdit }) {
                 project={project}
                 onEdit={onEdit}
                 onDragStart={() => setDraggedProject(project)}
+                onUpdateAllocations={(allocations) =>
+                  handleUpdateAllocations(project.id, allocations)
+                }
+                onUpdateCompletion={handleUpdateCompletion}
               />
             </li>
           ))}
