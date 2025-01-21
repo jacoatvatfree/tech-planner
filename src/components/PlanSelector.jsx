@@ -204,8 +204,8 @@ export default function PlanSelector() {
         const newProject = {
           ...project,
           id: newId,
-          startAfter: new Date(project.startAfter),
-          endBefore: new Date(project.endBefore),
+          startAfter: project.startAfter ? new Date(project.startAfter) : null,
+          endBefore: project.endBefore ? new Date(project.endBefore) : null,
           planId: newPlanId,
           allocations: newAllocations,
         };

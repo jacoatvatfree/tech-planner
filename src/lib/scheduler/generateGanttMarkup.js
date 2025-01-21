@@ -1,5 +1,75 @@
 import { dateUtils } from "./dateUtils";
 
+function calculateAssignmentDetails(
+  assignment,
+  engineers,
+  projects,
+  assignments,
+  safeEndDate,
+) {
+  const startDate = dateUtils.getNextWeekday(new Date(assignment.startDate));
+  if (isNaN(startDate.getTime())) throw new Error("Invalid date");
+
+  // Calculate total weekly hours for the project
+  const projectAssignments = assignments.filter(
+    (a) => a.projectId === assignment.projectId,
+  );
+  const totalWeeklyHours = projectAssignments.reduce((sum, a) => {
+    const eng = engineers.find((e) => e.id === a.engineerId);
+    if (!eng) return sum;
+    const percentage = a.percentage || 100;
+    return sum + (eng.weeklyHours || 40) * (percentage / 100);
+  }, 0);
+
+  // Calculate duration in working days
+  const project = projects.find((p) => p.id === assignment.projectId);
+  const hoursPerDay = totalWeeklyHours / 5;
+  const days = Math.max(1, Math.ceil(project.estimatedHours / hoursPerDay));
+
+  // Calculate if project ends after endBefore date by adding business days
+  let projectEndDate = new Date(startDate);
+  for (let i = 0; i < days; i++) {
+    projectEndDate = dateUtils.getNextWeekday(
+      new Date(projectEndDate.setDate(projectEndDate.getDate() + 1)),
+    );
+  }
+  const isCritical =
+    (project.endBefore && projectEndDate > new Date(project.endBefore)) ||
+    projectEndDate > safeEndDate;
+
+  const shortId = assignment.projectId.substring(0, 8);
+  const percentageLabel =
+    assignment.percentage < 100
+      ? ` (${Math.round(assignment.percentage)}%)`
+      : "";
+
+  const completionLabel =
+    project.percentComplete === 100
+      ? "done,"
+      : project.percentComplete > 0
+        ? "active,"
+        : "";
+
+  const criticalLabel = isCritical ? "crit," : "";
+
+  return {
+    startDate,
+    days,
+    shortId,
+    percentageLabel,
+    completionLabel,
+    criticalLabel,
+    project,
+  };
+}
+
+function generateAssignmentMarkup(assignment, details, itemName) {
+  const escapedName = itemName.replace(/[:#]/g, " ");
+  const projectCompletion = Math.round(details.project.percentComplete || 0);
+
+  return `        ${escapedName}${details.percentageLabel} :${details.completionLabel}${details.criticalLabel}${details.shortId}, ${dateUtils.toISOLocalString(details.startDate)}, ${details.days}d\n`;
+}
+
 export function generateGanttMarkup(
   assignments,
   engineers,
@@ -74,48 +144,18 @@ export function generateGanttMarkup(
         if (!project) return;
 
         try {
-          // Format dates
-          let startDate = new Date(assignment.startDate);
-          if (isNaN(startDate.getTime())) throw new Error("Invalid date");
-
-          // Ensure start date is not on a weekend
-          startDate = dateUtils.getNextWeekday(startDate);
-
-          // Calculate total weekly hours for the project
-          const projectAssignments = assignments.filter(
-            (a) => a.projectId === assignment.projectId,
+          const details = calculateAssignmentDetails(
+            assignment,
+            engineers,
+            projects,
+            assignments,
+            safeEndDate,
           );
-          const totalWeeklyHours = projectAssignments.reduce((sum, a) => {
-            const eng = engineers.find((e) => e.id === a.engineerId);
-            if (!eng) return sum;
-            const percentage = a.percentage || 100;
-            return sum + (eng.weeklyHours || 40) * (percentage / 100);
-          }, 0);
-
-          // Calculate duration in working days
-          const hoursPerDay = totalWeeklyHours / 5;
-          const requiredWorkDays = Math.max(
-            1,
-            Math.ceil(project.estimatedHours / hoursPerDay),
+          markup += generateAssignmentMarkup(
+            assignment,
+            details,
+            `${project.name} (${Math.round(project.percentComplete || 0)}%)`,
           );
-
-          // Just use the required work days - Mermaid will handle weekend scheduling
-          const days = requiredWorkDays;
-
-          const escapedProjectName = project.name.replace(/[:#]/g, " ");
-          const percentageLabel =
-            assignment.percentage < 100
-              ? ` (${Math.round(assignment.percentage)}%)`
-              : "";
-          const shortId = assignment.projectId.substring(0, 8);
-
-          const completionLabel =
-            project.percentComplete === 100
-              ? `done,`
-              : project.percentComplete > 0
-                ? "active,"
-                : "";
-          markup += `        ${escapedProjectName} (${Math.round(project.percentComplete || 0)}%) :${completionLabel}${shortId}, ${dateUtils.toISOLocalString(startDate)}, ${days}d\n`;
         } catch (error) {
           console.warn(
             `Skipping invalid assignment for ${engineer.name}:`,
@@ -144,45 +184,18 @@ export function generateGanttMarkup(
         if (!engineer) return;
 
         try {
-          let startDate = new Date(assignment.startDate);
-          if (isNaN(startDate.getTime())) throw new Error("Invalid date");
-
-          // Ensure start date is not on a weekend
-          startDate = dateUtils.getNextWeekday(startDate);
-
-          // Calculate total weekly hours for the project
-          const totalWeeklyHours = projectAssignments.reduce((sum, a) => {
-            const eng = engineers.find((e) => e.id === a.engineerId);
-            if (!eng) return sum;
-            const percentage = a.percentage || 100;
-            return sum + (eng.weeklyHours || 40) * (percentage / 100);
-          }, 0);
-
-          // Calculate duration in working days
-          const hoursPerDay = totalWeeklyHours / 5;
-          const requiredWorkDays = Math.max(
-            1,
-            Math.ceil(project.estimatedHours / hoursPerDay),
+          const details = calculateAssignmentDetails(
+            assignment,
+            engineers,
+            projects,
+            assignments,
+            safeEndDate,
           );
-
-          // Just use the required work days - Mermaid will handle weekend scheduling
-          const days = requiredWorkDays;
-
-          const escapedEngineerName = engineer.name.replace(/[:#]/g, " ");
-          const percentageLabel =
-            assignment.percentage < 100
-              ? ` (${Math.round(assignment.percentage)}%)`
-              : "";
-          const shortId = assignment.projectId.substring(0, 8);
-
-          const completionLabel =
-            project.percentComplete === 100
-              ? `done,`
-              : project.percentComplete > 0
-                ? "active,"
-                : "";
-
-          markup += `        ${escapedEngineerName}${percentageLabel} :${completionLabel}${shortId}, ${dateUtils.toISOLocalString(startDate)}, ${days}d\n`;
+          markup += generateAssignmentMarkup(
+            assignment,
+            details,
+            engineer.name,
+          );
         } catch (error) {
           console.warn(
             `Skipping invalid assignment for ${project.name}:`,
