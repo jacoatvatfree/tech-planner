@@ -1,0 +1,27 @@
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  caprover-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup NodeJS and Caprover
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: Deploy to Caprover
+        env:
+          CAPROVER_APP: planner
+          CAPROVER_URL: https://captain.nl.vatfree.com
+          CAPROVER_NAME: cap1
+          CAPROVER_BRANCH: main
+          CAPROVER_APP_TOKEN: ${{ secrets.CAPROVER_TOKEN }} # Use a secret for Caprover token
+        run: |
+          npm install -g caprover
+          caprover deploy
