@@ -18,17 +18,39 @@ export function calculatePlanCapacity(engineers, scheduleData, plan, projects) {
   const endOfPlan = new Date(plan.endDate);
   endOfPlan.setHours(23, 59, 59, 999);
 
-  // Calculate total available hours for all engineers until end of quarter
-  const weeksUntilEndOfPlan = Math.ceil(
-    (endOfPlan - startOfPlan) / (7 * 24 * 60 * 60 * 1000),
-  );
-  console.log("weeks", weeksUntilEndOfPlan);
+  // Calculate working days between dates (excluding weekends)
+  function getWorkingDays(startDate, endDate) {
+    let count = 0;
+    const curDate = new Date(startDate.getTime());
+    while (curDate <= endDate) {
+      const dayOfWeek = curDate.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) count++;
+      curDate.setDate(curDate.getDate() + 1);
+    }
+    return count;
+  }
+
+  // Get total working days in the plan period
+  const workingDays = getWorkingDays(startOfPlan, endOfPlan);
+
+  // Calculate total capacity based on working days
   const totalCapacityHours = engineers.reduce((sum, engineer) => {
-    const weeklyHours = engineer.weeklyHours || 40;
-    return sum + weeklyHours * weeksUntilEndOfPlan;
+    const dailyHours = (engineer.weeklyHours || 40) / 5; // Convert weekly hours to daily
+    return sum + dailyHours * workingDays;
   }, 0);
 
-  console.log(totalCapacityHours);
+  // Subtract standard holidays (approximate)
+  const AVERAGE_HOLIDAYS_PER_MONTH = 1.67; // 20 holidays per year / 12 months
+  const monthsDuration = (endOfPlan - startOfPlan) / (30 * 24 * 60 * 60 * 1000);
+  const estimatedHolidays = Math.round(
+    monthsDuration * AVERAGE_HOLIDAYS_PER_MONTH,
+  );
+
+  // Adjust total capacity for holidays
+  const adjustedCapacityHours = engineers.reduce((sum, engineer) => {
+    const dailyHours = (engineer.weeklyHours || 40) / 5;
+    return sum - dailyHours * estimatedHolidays;
+  }, totalCapacityHours);
 
   // Calculate assigned hours from assignments
   const assignedHours = assignments.reduce((sum, assignment) => {
@@ -65,10 +87,10 @@ export function calculatePlanCapacity(engineers, scheduleData, plan, projects) {
   }, 0);
 
   return {
-    totalCapacityHours,
+    totalCapacityHours: adjustedCapacityHours,
     assignedHours,
     utilizationPercentage: Math.round(
-      (assignedHours / totalCapacityHours) * 100,
+      (assignedHours / adjustedCapacityHours) * 100,
     ),
   };
 }

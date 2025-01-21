@@ -8,7 +8,7 @@ export default function ProjectListItem({
   project,
   onEdit,
   onDragStart,
-  onUpdateAssignments,
+  onUpdateAllocations,
   onUpdateCompletion,
 }) {
   const { removeProject } = useProjectStore();
@@ -95,12 +95,12 @@ export default function ProjectListItem({
                       checked={isAllocated}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          onUpdateAssignments([
+                          onUpdateAllocations([
                             ...(project.allocations || []),
                             { engineerId: engineer.id, percentage: 100 },
                           ]);
                         } else {
-                          onUpdateAssignments(
+                          onUpdateAllocations(
                             (project.allocations || []).filter(
                               (a) => a.engineerId !== engineer.id,
                             ),

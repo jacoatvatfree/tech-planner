@@ -148,6 +148,8 @@ export default function ProjectForm({
           />
           <div className="flex flex-wrap gap-2 mt-1 w-3/4">
             {[
+              { label: "1d", hours: 8 },
+              { label: "2d", hours: 16 },
               { label: "3d", hours: 24 },
               { label: "1w", hours: 40 },
               { label: "2w", hours: 80 },
