@@ -17,10 +17,10 @@ jobs:
 
       - name: Deploy to Caprover
         env:
+          CAPROVER_BRANCH: main
           CAPROVER_APP: ${{ secrets.CAPROVER_APP }}
           CAPROVER_URL: ${{ secrets.CAPROVER_URL }}
           CAPROVER_NAME: ${{ secrets.CAPROVER_NAME }}
-          CAPROVER_BRANCH: ${{ secrets.CAPROVER_BRANCH }}
           CAPROVER_APP_TOKEN: ${{ secrets.CAPROVER_TOKEN }} # Use a secret for Caprover token
         run: |
           npm install -g caprover
