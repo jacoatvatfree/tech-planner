@@ -25,6 +25,12 @@ function PlanForm({ onSubmit, onCancel }) {
         name: formData.name,
         startDate: new Date(formData.startDate),
         endDate: new Date(formData.endDate),
+        excludes: formData.excludes
+          ? formData.excludes
+              .split(",")
+              .map((s) => s.trim())
+              .filter((s) => s.length > 0)
+          : [],
       }),
     );
     resetForm();
@@ -81,6 +87,19 @@ function PlanForm({ onSubmit, onCancel }) {
               required
             />
           </div>
+          <div>
+            <label className="form-label">Excludes</label>
+            <input
+              type="text"
+              value={formData.excludes}
+              onChange={(e) =>
+                setFormData({ ...formData, excludes: e.target.value })
+              }
+              className="form-input"
+              placeholder="e.g., 'weekends, 2024/12/25'"
+            />
+          </div>
+
           <div className="flex justify-end space-x-3 pt-4">
             <button
               type="button"
@@ -147,6 +166,7 @@ export default function PlanSelector() {
         name: `${importData.plan.name}`,
         startDate: new Date(importData.plan.startDate),
         endDate: new Date(importData.plan.endDate),
+        excludes: importData.plan.excludes || [],
       };
 
       // Add the new plan

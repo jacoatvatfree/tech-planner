@@ -7,7 +7,7 @@ export const dateUtils = {
 
   toISOLocalString: (d) => {
     d.setTime(d.getTime() - d.getTimezoneOffset() * 60000);
-    return d.toISOString().split("T")[0];
+    return d.toISOString().split("T")[0].replace("-", "/");
   },
 
   isWeekend: (date) => {

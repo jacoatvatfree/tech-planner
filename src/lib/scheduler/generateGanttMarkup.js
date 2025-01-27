@@ -77,6 +77,7 @@ export function generateGanttMarkup(
   plan,
   viewType = "resource", // 'resource' or 'project'
 ) {
+  const excludes = plan.excludes?.join(",") || "weekends";
   console.log("Generating Gantt Markup with:", {
     assignmentsCount: assignments?.length,
     engineersCount: engineers?.length,
@@ -84,6 +85,7 @@ export function generateGanttMarkup(
     engineers: engineers,
     planStartDate: plan.startDate,
     planEndDate: plan.endDate,
+    excludes,
   });
 
   // Create safe dates first
@@ -93,10 +95,10 @@ export function generateGanttMarkup(
   // Basic validation
   if (!assignments?.length || !engineers?.length || !projects?.length) {
     return `gantt
-      dateFormat YYYY-MM-DD
+      dateFormat YYYY/MM/DD
       title ${plan.name} - Resource Planner
       section No Data
-      No assignments found :2024-01-01, 1d`;
+      No assignments found :2024/01/01, 1d`;
   }
 
   // Check for invalid dates
@@ -106,19 +108,19 @@ export function generateGanttMarkup(
       planEndDate: plan.endDate,
     });
     return `gantt
-    dateFormat YYYY-MM-DD
+    dateFormat YYYY/MM/DD
     title ${plan.name} - Resource Planner
     section Error
-    Invalid dates :2024-01-01, 1d`;
+    Invalid dates :2024/01/01, 1d`;
   }
 
   // Initialize markup
   let markup = `gantt
-    dateFormat YYYY-MM-DD
+    dateFormat YYYY/MM/DD
     title ${plan.name} - Resource Planner
-    axisFormat %Y-%m-%d
+    axisFormat %Y/%m/%d
     tickInterval 1week
-    excludes weekends
+    excludes ${excludes}
     
     section Start
         s :milestone, ${dateUtils.toISOLocalString(safeStartDate)}, 0d

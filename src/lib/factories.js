@@ -69,9 +69,10 @@ export const makeSchedule = ({
 /**
  * Create a new plan
  */
-export const makePlan = ({ name, startDate, endDate }) => ({
+export const makePlan = ({ name, startDate, endDate, excludes = [] }) => ({
   id: uuidv4(),
   name,
   startDate: new Date(startDate),
   endDate: new Date(endDate),
+  excludes,
 });

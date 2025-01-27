@@ -26,8 +26,9 @@ const usePlanStore = create((set, get) => ({
     }),
   addPlan: (plan) =>
     set((state) => {
+      const newPlan = { id: uuidv4(), ...plan };
       const newState = {
-        plans: [...state.plans, { id: uuidv4(), ...plan }],
+        plans: [...state.plans, newPlan],
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newState.plans));
       return newState;

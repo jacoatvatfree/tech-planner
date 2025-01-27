@@ -81,6 +81,7 @@ export default function Dashboard() {
       plan: currentPlan,
       engineers: planEngineers,
       projects: planProjects,
+      excludes: currentPlan.excludes,
     };
 
     const blob = new Blob([JSON.stringify(exportData, null, 2)], {
