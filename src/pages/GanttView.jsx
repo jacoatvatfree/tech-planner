@@ -82,7 +82,11 @@ export default function GanttView() {
           return;
         }
 
-        const result = calculateSchedule(planProjects, planEngineers);
+        const result = calculateSchedule(
+          planProjects,
+          planEngineers,
+          currentPlan?.excludes || [],
+        );
 
         if (!isMounted) return;
 

@@ -2,7 +2,40 @@ import { dateUtils } from "./dateUtils";
 
 // Project scheduling helper functions
 const schedulingUtils = {
-  calculateProjectDuration: (project, engineers) => {
+  isExcludedDate: (date, excludes) => {
+    if (!excludes?.length) return false;
+    return dateUtils.isExcludedDate(date, excludes);
+  },
+
+  getNextWorkingDate: (date, excludes) => {
+    let currentDate = new Date(date);
+    currentDate.setDate(currentDate.getDate() + 1);
+
+    while (
+      dateUtils.isWeekend(currentDate) ||
+      dateUtils.isExcludedDate(currentDate, excludes)
+    ) {
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    return currentDate;
+  },
+
+  calculateWorkingDays: (startDate, endDate, excludes) => {
+    let days = 0;
+    let currentDate = new Date(startDate);
+
+    while (currentDate <= endDate) {
+      if (
+        !dateUtils.isWeekend(currentDate) &&
+        !dateUtils.isExcludedDate(currentDate, excludes)
+      ) {
+        days++;
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    return days;
+  },
+  calculateProjectDuration: (project, engineers, excludes) => {
     // Calculate total hours per day across all allocations
     const hoursPerDay = project.allocations.reduce((sum, allocation) => {
       const engineer = engineers.find((e) => e.id === allocation.engineerId);
@@ -13,11 +46,31 @@ const schedulingUtils = {
     }, 0);
 
     // Calculate days needed by dividing total project hours by combined daily hours
-    const daysNeeded = Math.ceil(project.estimatedHours / hoursPerDay);
-    return daysNeeded / 5; // Convert to weeks
+    let remainingHours = project.estimatedHours;
+    let workDays = 0;
+    let currentDate = new Date();
+
+    while (remainingHours > 0) {
+      if (
+        !dateUtils.isWeekend(currentDate) &&
+        !dateUtils.isExcludedDate(currentDate, excludes)
+      ) {
+        remainingHours -= hoursPerDay;
+        workDays++;
+      }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return workDays / 5; // Convert to weeks
   },
 
-  findOverlappingAssignments: (assignments, engineerId, startDate, endDate) => {
+  findOverlappingAssignments: (
+    assignments,
+    engineerId,
+    startDate,
+    endDate,
+    excludes,
+  ) => {
     return assignments
       .filter((a) => a.engineerId === engineerId)
       .filter((a) => {
@@ -25,6 +78,7 @@ const schedulingUtils = {
         const assignmentEnd = dateUtils.addWorkingDays(
           assignmentStart,
           Math.ceil(a.weeksNeeded * 5),
+          excludes,
         );
         return !(endDate <= assignmentStart || startDate >= assignmentEnd);
       });
@@ -61,7 +115,7 @@ const schedulingUtils = {
   },
 };
 
-export function calculateSchedule(projects, engineers) {
+export function calculateSchedule(projects, engineers, planExcludes = []) {
   if (!projects?.length || !engineers?.length) {
     return [];
   }
@@ -94,6 +148,7 @@ export function calculateSchedule(projects, engineers) {
     const weeksNeeded = schedulingUtils.calculateProjectDuration(
       project,
       engineers,
+      planExcludes,
     );
 
     // Calculate weeks between base date and project start date
@@ -122,16 +177,26 @@ export function calculateSchedule(projects, engineers) {
       const engineerLastProject = assignments
         .filter((a) => a.engineerId === engineer.id)
         .sort((a, b) => {
-          const aEnd = new Date(a.startDate);
-          aEnd.setDate(aEnd.getDate() + Math.ceil(a.weeksNeeded * 5));
-          const bEnd = new Date(b.startDate);
-          bEnd.setDate(bEnd.getDate() + Math.ceil(b.weeksNeeded * 5));
+          const aEnd = dateUtils.addWorkingDays(
+            new Date(a.startDate),
+            Math.ceil(a.weeksNeeded * 5),
+            planExcludes,
+          );
+          const bEnd = dateUtils.addWorkingDays(
+            new Date(b.startDate),
+            Math.ceil(b.weeksNeeded * 5),
+            planExcludes,
+          );
           return bEnd - aEnd;
         })
         .pop();
 
       const engineerEarliestStart = engineerLastProject
-        ? new Date(engineerLastProject.startDate)
+        ? dateUtils.addWorkingDays(
+            new Date(engineerLastProject.startDate),
+            Math.ceil(engineerLastProject.weeksNeeded * 5),
+            planExcludes,
+          )
         : new Date(latestPossibleStart);
 
       if (engineerEarliestStart > latestPossibleStart) {
@@ -140,7 +205,13 @@ export function calculateSchedule(projects, engineers) {
     }
 
     // Ensure it's a weekday
-    latestPossibleStart = dateUtils.getNextWeekday(latestPossibleStart);
+    // Ensure it's not a weekend or excluded date
+    while (
+      dateUtils.isWeekend(latestPossibleStart) ||
+      dateUtils.isExcludedDate(latestPossibleStart, planExcludes)
+    ) {
+      latestPossibleStart.setDate(latestPossibleStart.getDate() + 1);
+    }
 
     // Now find a date where all engineers have enough capacity
     let searching = true;
@@ -154,6 +225,7 @@ export function calculateSchedule(projects, engineers) {
         const proposedEndDate = dateUtils.addWorkingDays(
           candidateDate,
           Math.ceil(weeksNeeded * 5),
+          planExcludes,
         );
 
         const overlappingAssignments =
@@ -162,6 +234,7 @@ export function calculateSchedule(projects, engineers) {
             engineer.id,
             candidateDate,
             proposedEndDate,
+            planExcludes,
           );
 
         if (
@@ -189,7 +262,10 @@ export function calculateSchedule(projects, engineers) {
       } else {
         do {
           candidateDate.setDate(candidateDate.getDate() + 1);
-        } while (dateUtils.isWeekend(candidateDate));
+        } while (
+          dateUtils.isWeekend(candidateDate) ||
+          dateUtils.isExcludedDate(candidateDate, planExcludes)
+        );
       }
     }
 
@@ -231,9 +307,11 @@ export function calculateSchedule(projects, engineers) {
     const endDate = new Date(
       Math.max(
         ...projectAssignments.map((a) => {
-          const end = new Date(a.startDate);
-          end.setDate(end.getDate() + Math.ceil(a.weeksNeeded * 5));
-          return end;
+          return dateUtils.addWorkingDays(
+            new Date(a.startDate),
+            Math.ceil(a.weeksNeeded * 5),
+            planExcludes,
+          );
         }),
       ),
     );

@@ -36,10 +36,10 @@ export default function Dashboard() {
   }, [currentPlanId, initializeProjects, initializeEngineers]);
 
   // Calculate schedule when projects or engineers change
-  const currentScheduleData = React.useMemo(
-    () => calculateSchedule(planProjects, planEngineers),
-    [planProjects, planEngineers],
-  );
+  const currentScheduleData = React.useMemo(() => {
+    const plan = getCurrentPlan();
+    return calculateSchedule(planProjects, planEngineers, plan?.excludes || []);
+  }, [planProjects, planEngineers, getCurrentPlan]);
 
   // Update schedule state and calculate utilization
   useEffect(() => {
