@@ -7,32 +7,47 @@ import {
   PlusIcon,
   TrashIcon,
   ArrowUpTrayIcon,
+  PencilIcon,
 } from "@heroicons/react/24/outline";
 import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 
-function PlanForm({ onSubmit, onCancel }) {
-  const [formData, setFormData] = useState({
-    name: "",
-    startDate: format(new Date(), "yyyy-MM-dd"),
-    endDate: format(new Date(), "yyyy-MM-dd"),
-  });
+function PlanForm({ onSubmit, onCancel, initialData = null }) {
+  const [formData, setFormData] = useState(
+    initialData
+      ? {
+          name: initialData.name,
+          startDate: format(new Date(initialData.startDate), "yyyy-MM-dd"),
+          endDate: format(new Date(initialData.endDate), "yyyy-MM-dd"),
+          excludes: initialData.excludes?.join(", ") || "",
+        }
+      : {
+          name: "",
+          startDate: format(new Date(), "yyyy-MM-dd"),
+          endDate: format(new Date(), "yyyy-MM-dd"),
+          excludes: "",
+        },
+  );
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(
-      makePlan({
-        name: formData.name,
-        startDate: new Date(formData.startDate),
-        endDate: new Date(formData.endDate),
-        excludes: formData.excludes
-          ? formData.excludes
-              .split(",")
-              .map((s) => s.trim())
-              .filter((s) => s.length > 0)
-          : [],
-      }),
-    );
+    const planData = {
+      name: formData.name,
+      startDate: new Date(formData.startDate),
+      endDate: new Date(formData.endDate),
+      excludes: formData.excludes
+        ? formData.excludes
+            .split(",")
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0)
+        : [],
+    };
+
+    if (initialData) {
+      onSubmit({ ...planData, id: initialData.id });
+    } else {
+      onSubmit(makePlan(planData));
+    }
     resetForm();
   };
 
@@ -48,7 +63,9 @@ function PlanForm({ onSubmit, onCancel }) {
   return (
     <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center">
       <div className="bg-white rounded-lg p-6 max-w-md w-full">
-        <h3 className="text-lg font-medium mb-4">Add New Plan</h3>
+        <h3 className="text-lg font-medium mb-4">
+          {initialData ? "Edit Plan" : "Add New Plan"}
+        </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="form-label">Name</label>
@@ -112,7 +129,7 @@ function PlanForm({ onSubmit, onCancel }) {
               type="submit"
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             >
-              Add
+              {initialData ? "Save" : "Add"}
             </button>
           </div>
         </form>
@@ -122,15 +139,32 @@ function PlanForm({ onSubmit, onCancel }) {
 }
 
 export default function PlanSelector() {
-  const { plans, addPlan, setCurrentPlanId, currentPlanId, removePlan } =
-    usePlanStore();
+  const {
+    plans,
+    addPlan,
+    updatePlan,
+    setCurrentPlanId,
+    currentPlanId,
+    removePlan,
+  } = usePlanStore();
+  const [planToEdit, setPlanToEdit] = useState(null);
   const { initializeProjects } = useProjectStore();
   const { initializeEngineers, addEngineer } = useEngineerStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleAddPlan = (plan) => {
-    addPlan(plan);
+  const handlePlanSubmit = (plan) => {
+    if (planToEdit) {
+      updatePlan(plan.id, plan);
+    } else {
+      addPlan(plan);
+    }
+    setPlanToEdit(null);
     setIsModalOpen(false);
+  };
+
+  const handleEditPlan = (plan) => {
+    setPlanToEdit(plan);
+    setIsModalOpen(true);
   };
 
   const handleDeletePlan = async (planId, planName) => {
@@ -311,13 +345,22 @@ export default function PlanSelector() {
               >
                 {plan.name}
               </button>
-              <button
-                onClick={() => handleDeletePlan(plan.id, plan.name)}
-                className="ml-2 p-1 text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100"
-                title="Delete plan"
-              >
-                <TrashIcon className="h-4 w-4" />
-              </button>
+              <div className="flex ml-2">
+                <button
+                  onClick={() => handleEditPlan(plan)}
+                  className="p-1 text-gray-400 hover:text-blue-600 rounded-full hover:bg-gray-100 mr-1"
+                  title="Edit plan"
+                >
+                  <PencilIcon className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => handleDeletePlan(plan.id, plan.name)}
+                  className="p-1 text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100"
+                  title="Delete plan"
+                >
+                  <TrashIcon className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           ))}
           <div className="flex space-x-2">
@@ -343,8 +386,12 @@ export default function PlanSelector() {
       </div>
       {isModalOpen && (
         <PlanForm
-          onSubmit={handleAddPlan}
-          onCancel={() => setIsModalOpen(false)}
+          onSubmit={handlePlanSubmit}
+          onCancel={() => {
+            setPlanToEdit(null);
+            setIsModalOpen(false);
+          }}
+          initialData={planToEdit}
         />
       )}
     </div>
