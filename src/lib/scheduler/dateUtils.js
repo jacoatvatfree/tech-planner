@@ -66,9 +66,23 @@ function parseExclude(exclude) {
 }
 
 export const dateUtils = {
+  // Check if a date is null, invalid, or epoch (1970-01-01)
+  isNullOrEpochDate: (date) => {
+    if (!date) return true;
+    
+    const dateObj = date instanceof Date ? date : new Date(date);
+    if (isNaN(dateObj.getTime())) return true;
+    
+    // Check if it's the epoch date (1970-01-01)
+    return dateObj.getFullYear() === 1970 && 
+           dateObj.getMonth() === 0 && 
+           dateObj.getDate() === 1;
+  },
+  
   // Check if a date is excluded based on the excludes list
   isExcludedDate: (date, excludes) => {
     if (!excludes?.length) return false;
+    if (dateUtils.isNullOrEpochDate(date)) return false;
 
     // Create a cache key
     const dateStr = date instanceof Date ? date.toISOString() : new Date(date).toISOString();
@@ -114,7 +128,7 @@ export const dateUtils = {
   
   // Normalize a date by setting time to midnight
   normalize: (date) => {
-    if (!date) return new Date();
+    if (dateUtils.isNullOrEpochDate(date)) return new Date();
     
     const result = new Date(date);
     result.setHours(0, 0, 0, 0);
@@ -123,7 +137,7 @@ export const dateUtils = {
 
   // Convert date to ISO string with local timezone adjustment
   toISOLocalString: (d) => {
-    if (!d) return '';
+    if (dateUtils.isNullOrEpochDate(d)) return '';
     
     const copy = new Date(d);
     copy.setTime(copy.getTime() - copy.getTimezoneOffset() * 60000);
@@ -132,7 +146,7 @@ export const dateUtils = {
 
   // Check if a date is a weekend
   isWeekend: (date) => {
-    if (!date) return false;
+    if (dateUtils.isNullOrEpochDate(date)) return false;
     
     const day = date.getDay();
     return day === 0 || day === 6;
@@ -140,7 +154,7 @@ export const dateUtils = {
 
   // Get the next weekday from a date
   getNextWeekday: (date) => {
-    if (!date) return new Date();
+    if (dateUtils.isNullOrEpochDate(date)) return new Date();
     
     // Create a cache key
     const dateStr = date instanceof Date ? date.toISOString() : new Date(date).toISOString();
@@ -178,7 +192,7 @@ export const dateUtils = {
 
   // Add business days to a date
   addBusinessDays: (date, days) => {
-    if (!date) return new Date();
+    if (dateUtils.isNullOrEpochDate(date)) return new Date();
     if (!days || days <= 0) return new Date(date);
     
     const result = new Date(date);
@@ -188,7 +202,7 @@ export const dateUtils = {
 
   // Add working days to a date, skipping weekends and excluded dates
   addWorkingDays: (date, workDays, excludes = []) => {
-    if (!date) return new Date();
+    if (dateUtils.isNullOrEpochDate(date)) return new Date();
     if (!workDays || workDays <= 0) return new Date(date);
     
     // Create a cache key

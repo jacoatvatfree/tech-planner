@@ -28,11 +28,18 @@ function memoizedCalculateAssignmentDetails(
 ) {
   const cacheKey = `${assignment.projectId}_${assignment.engineerId}_${assignment.startDate}`;
   
-  if (markupCache.assignmentDetails.has(cacheKey)) {
-    return markupCache.assignmentDetails.get(cacheKey);
+  // Temporarily disable caching to ensure fresh markup generation
+  // if (markupCache.assignmentDetails.has(cacheKey)) {
+  //   return markupCache.assignmentDetails.get(cacheKey);
+  // }
+  
+  // Check for null or epoch dates
+  const assignmentStartDate = assignment.startDate ? new Date(assignment.startDate) : null;
+  if (!assignmentStartDate || assignmentStartDate.getFullYear() === 1970) {
+    throw new Error("Invalid or epoch date");
   }
   
-  const startDate = dateUtils.getNextWeekday(new Date(assignment.startDate));
+  const startDate = dateUtils.getNextWeekday(assignmentStartDate);
   if (isNaN(startDate.getTime())) throw new Error("Invalid date");
 
   // Find the project
@@ -114,9 +121,10 @@ function generateEngineerMarkup(
 ) {
   const cacheKey = `${engineer.id}_${JSON.stringify(engineerAssignments.map(a => a.id))}`;
   
-  if (markupCache.engineerMarkup.has(cacheKey)) {
-    return markupCache.engineerMarkup.get(cacheKey);
-  }
+  // Temporarily disable caching to ensure fresh markup generation
+  // if (markupCache.engineerMarkup.has(cacheKey)) {
+  //   return markupCache.engineerMarkup.get(cacheKey);
+  // }
   
   let markup = `\n    section ${engineer.name}\n`;
 
@@ -164,9 +172,10 @@ function generateProjectMarkup(
 ) {
   const cacheKey = `${project.id}_${JSON.stringify(projectAssignments.map(a => a.id))}`;
   
-  if (markupCache.projectMarkup.has(cacheKey)) {
-    return markupCache.projectMarkup.get(cacheKey);
-  }
+  // Temporarily disable caching to ensure fresh markup generation
+  // if (markupCache.projectMarkup.has(cacheKey)) {
+  //   return markupCache.projectMarkup.get(cacheKey);
+  // }
   
   let markup = `\n    section ${project.name} (${Math.round(project.percentComplete || 0)}%)\n`;
 
@@ -214,9 +223,10 @@ export function generateGanttMarkup(
   // Create a cache key based on inputs
   const cacheKey = `${viewType}_${plan?.id || ''}_${assignments.length}_${engineers.length}_${projects.length}`;
   
-  if (markupCache.fullMarkup.has(cacheKey)) {
-    return markupCache.fullMarkup.get(cacheKey);
-  }
+  // Temporarily disable caching to ensure fresh markup generation
+  // if (markupCache.fullMarkup.has(cacheKey)) {
+  //   return markupCache.fullMarkup.get(cacheKey);
+  // }
   
   // Clear cache if it gets too large (prevent memory leaks)
   if (markupCache.fullMarkup.size > 10) {

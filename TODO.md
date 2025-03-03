@@ -102,9 +102,13 @@ This document outlines the tasks needed to address the infinite loop/recurring c
 
 ## Scheduling Improvements
 
-- [ ] **Fix scheduling gaps issue**
-  - Modified the scheduling algorithm to allow lower priority projects to be scheduled in gaps
-  - Replaced `findCommonStartDate` with `findEarliestStartDate` to find the earliest possible slot for each project
-  - Updated the import process to reset placeholder dates (1970-01-01) to null
+- [x] **Fix scheduling gaps issue**
+  - ✅ Modified the scheduling algorithm to allow lower priority projects to be scheduled in gaps
+  - ✅ Replaced `findCommonStartDate` with `findEarliestStartDate` to find the earliest possible slot for each project
+  - ✅ Updated the date handling to properly handle placeholder dates (1970-01-01) as null
   - ✅ Disabled Gantt markup caching to ensure fresh markup generation
-  - Files modified: `src/lib/scheduler/calculateSchedule.js`, `src/components/PlanSelector.jsx`, `src/pages/GanttView.jsx`, `src/lib/scheduler/generateGanttMarkup.js`
+  - ✅ Added `isNullOrEpochDate` utility function to consistently check for invalid dates
+  - ✅ Fixed resource double-booking issue by implementing a strict non-overlapping assignment policy
+  - ✅ Added explicit tracking of engineer availability during scheduling
+  - ✅ Enhanced conflict detection to check both assignments and availability tracking
+  - Files modified: `src/lib/scheduler/calculateSchedule.js`, `src/lib/scheduler/dateUtils.js`, `src/lib/scheduler/generateGanttMarkup.js`

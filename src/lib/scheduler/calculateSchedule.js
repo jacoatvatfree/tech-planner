@@ -98,6 +98,11 @@ const schedulingUtils = {
     });
   },
 
+  // Check if there are any overlapping assignments (regardless of priority)
+  hasAnyOverlap: (overlappingAssignments) => {
+    return overlappingAssignments.length > 0;
+  },
+
   calculateCurrentWorkload: (
     overlappingAssignments,
     project,
@@ -182,62 +187,35 @@ function sortProjects(projects, baseDate) {
   });
 }
 
-// Find a common start date for a project where all engineers have capacity
-function findCommonStartDate(project, engineers, assignments, baseDate, weeksNeeded, planExcludes, sortedProjects) {
-  // Use project's startAfter date if specified, otherwise use the plan's base date
-  let latestPossibleStart = new Date(
+// Find the earliest possible start date for a project where all engineers have capacity
+function findEarliestStartDate(project, engineers, assignments, baseDate, weeksNeeded, planExcludes, sortedProjects, engineerAvailability) {
+  // Use project's startAfter date if specified and valid (not 1970-01-01), otherwise use the plan's base date
+  const projectStartAfter = project.startAfter ? new Date(project.startAfter) : null;
+  const isStartAfterEpoch = projectStartAfter && projectStartAfter.getFullYear() === 1970;
+  
+  let earliestPossibleStart = new Date(
     Math.max(
-      project.startAfter
-        ? new Date(project.startAfter).getTime()
+      !isStartAfterEpoch && projectStartAfter
+        ? projectStartAfter.getTime()
         : baseDate.getTime(),
       baseDate.getTime()
     )
   );
 
-  // For each engineer, find their earliest possible start date
-  for (const allocation of project.allocations) {
-    const engineer = engineers.find((e) => e.id === allocation.engineerId);
-    if (!engineer) continue;
-
-    // Find the engineer's last project
-    const engineerAssignments = assignments.filter((a) => a.engineerId === engineer.id);
-    let latestEndDate = latestPossibleStart;
-    
-    for (const assignment of engineerAssignments) {
-      const assignmentEnd = dateUtils.addWorkingDays(
-        new Date(assignment.startDate),
-        Math.ceil(assignment.weeksNeeded * 5),
-        planExcludes
-      );
-      
-      if (assignmentEnd > latestEndDate) {
-        latestEndDate = assignmentEnd;
-      }
-    }
-
-    if (latestEndDate > latestPossibleStart) {
-      latestPossibleStart = new Date(latestEndDate);
-    }
-  }
-
   // Ensure it's not a weekend or excluded date
   while (
-    dateUtils.isWeekend(latestPossibleStart) ||
-    dateUtils.isExcludedDate(latestPossibleStart, planExcludes)
+    dateUtils.isWeekend(earliestPossibleStart) ||
+    dateUtils.isExcludedDate(earliestPossibleStart, planExcludes)
   ) {
-    latestPossibleStart.setDate(latestPossibleStart.getDate() + 1);
+    earliestPossibleStart.setDate(earliestPossibleStart.getDate() + 1);
   }
-
-  // Now find a date where all engineers have enough capacity
-  let candidateDate = new Date(latestPossibleStart);
-  let maxIterations = 365; // Safety limit to prevent infinite loops
-  let iterations = 0;
 
   // Check if any allocation has a specific start date
   // Only consider allocations for engineers that exist in the current plan
   const allocationsWithDates = project.allocations.filter(
     a => a.startDate && 
          new Date(a.startDate).getTime() > 0 && 
+         new Date(a.startDate).getFullYear() !== 1970 &&
          engineers.some(e => e.id === a.engineerId)
   );
   
@@ -248,14 +226,20 @@ function findCommonStartDate(project, engineers, assignments, baseDate, weeksNee
     );
     
     // Only use allocation date if it's after our calculated start
-    if (latestAllocationStart > candidateDate) {
-      candidateDate = latestAllocationStart;
+    if (latestAllocationStart > earliestPossibleStart) {
+      earliestPossibleStart = latestAllocationStart;
     }
   }
+
+  // Now find the earliest date where all engineers have enough capacity
+  let candidateDate = new Date(earliestPossibleStart);
+  let maxIterations = 365; // Safety limit to prevent infinite loops
+  let iterations = 0;
 
   while (iterations < maxIterations) {
     iterations++;
     
+    // Check if all engineers are available at this date
     const allEngineersAvailable = project.allocations.every((allocation) => {
       const engineer = engineers.find((e) => e.id === allocation.engineerId);
       if (!engineer) return false;
@@ -266,6 +250,7 @@ function findCommonStartDate(project, engineers, assignments, baseDate, weeksNee
         planExcludes
       );
 
+      // Check for overlaps with existing assignments
       const overlappingAssignments = memoizedFindOverlappingAssignments(
         assignments,
         engineer.id,
@@ -274,31 +259,26 @@ function findCommonStartDate(project, engineers, assignments, baseDate, weeksNee
         planExcludes
       );
 
-      if (
-        schedulingUtils.hasHigherPriorityConflict(
-          overlappingAssignments,
-          project,
-          sortedProjects
-        )
-      ) {
+      // Check for overlaps with engineer availability
+      const hasOverlap = schedulingUtils.hasAnyOverlap(overlappingAssignments);
+      
+      // Also check the engineerAvailability map for any conflicts
+      const hasAvailabilityConflict = engineerAvailability[engineer.id]?.some(
+        (availability) => {
+          const availStart = availability.startDate;
+          const availEnd = availability.endDate;
+          
+          // Check if there's any overlap
+          return !(proposedEndDate <= availStart || candidateDate >= availEnd);
+        }
+      );
+      
+      // If there's any overlap or conflict, the engineer is not available
+      if (hasOverlap || hasAvailabilityConflict) {
         return false;
       }
-
-      const workloadCacheKey = `${engineer.id}_${candidateDate.toISOString()}`;
-      let currentWorkload;
       
-      if (calculationCache.workloadCache.has(workloadCacheKey)) {
-        currentWorkload = calculationCache.workloadCache.get(workloadCacheKey);
-      } else {
-        currentWorkload = schedulingUtils.calculateCurrentWorkload(
-          overlappingAssignments,
-          project,
-          sortedProjects
-        );
-        calculationCache.workloadCache.set(workloadCacheKey, currentWorkload);
-      }
-
-      return currentWorkload + (allocation.percentage || 100) <= 100;
+      return true;
     });
 
     if (allEngineersAvailable) {
@@ -490,7 +470,13 @@ export function calculateSchedule(projects, engineers, planExcludes = []) {
   const baseDate = findBaseDate(projects);
   const sortedProjects = sortProjects(projects, baseDate);
 
-  // Process each project
+  // Create a map to track engineer availability
+  const engineerAvailability = {};
+  engineers.forEach(engineer => {
+    engineerAvailability[engineer.id] = [];
+  });
+  
+  // Process each project in priority order
   for (const project of sortedProjects) {
     // Skip projects without allocations or hours
     if (!project.allocations?.length || !project.estimatedHours) {
@@ -521,29 +507,52 @@ export function calculateSchedule(projects, engineers, planExcludes = []) {
       planExcludes
     );
 
-    // Find a common start date for all engineers
-    const commonStartDate = findCommonStartDate(
+    // Find the earliest possible start date
+    const earliestStartDate = findEarliestStartDate(
       projectWithValidAllocations,
       engineers,
       assignments,
       baseDate,
       weeksNeeded,
       planExcludes,
-      sortedProjects
+      sortedProjects,
+      engineerAvailability
     );
 
     // Create assignments for this project
     const projectAssignments = createAssignments(
       projectWithValidAllocations,
       engineers,
-      commonStartDate,
+      earliestStartDate,
       baseDate,
       weeksNeeded,
       planExcludes
     );
 
-    // Add to the assignments array
-    assignments.push(...projectAssignments);
+    // Update engineer availability and add to assignments array
+    for (const assignment of projectAssignments) {
+      const startDate = new Date(assignment.startDate);
+      const endDate = dateUtils.addWorkingDays(
+        startDate,
+        Math.ceil(assignment.weeksNeeded * 5),
+        planExcludes
+      );
+      
+      // Add to engineer availability tracking
+      if (engineerAvailability[assignment.engineerId]) {
+        engineerAvailability[assignment.engineerId].push({
+          startDate,
+          endDate,
+          projectId: assignment.projectId
+        });
+      }
+      
+      // Add to assignments array
+      assignments.push(assignment);
+    }
+    
+    // Log for debugging
+    logger.debug(`Scheduled project ${project.name} (priority: ${project.priority}) to start on ${dateUtils.toISOLocalString(earliestStartDate)}`);
   }
 
   // Convert assignments to scheduled projects
