@@ -82,7 +82,8 @@ export default function GanttView() {
       const result = calculateSchedule(
         planProjects,
         planTeam,
-        currentPlan?.excludes || []
+        currentPlan?.excludes || [],
+        currentPlan?.startDate || null
       );
 
       // Only update if we have actual changes

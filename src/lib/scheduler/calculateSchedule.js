@@ -167,14 +167,24 @@ function memoizedFindOverlappingAssignments(assignments, engineerId, startDate, 
 }
 
 // Find the base date for scheduling
-function findBaseDate(projects) {
-  return dateUtils.normalize(
+function findBaseDate(projects, planStartDate) {
+  // First find the earliest project start date
+  const earliestProjectDate = dateUtils.normalize(
     projects.reduce((earliest, project) => {
       if (!project.startAfter) return earliest;
       const projectStart = new Date(project.startAfter);
       return projectStart < earliest ? projectStart : earliest;
     }, new Date())
   );
+  
+  // If a plan start date is provided, ensure the base date is not earlier than the plan start date
+  if (planStartDate && !dateUtils.isNullOrEpochDate(planStartDate)) {
+    const normalizedPlanStartDate = dateUtils.normalize(new Date(planStartDate));
+    // Return the later of the two dates
+    return new Date(Math.max(earliestProjectDate.getTime(), normalizedPlanStartDate.getTime()));
+  }
+  
+  return earliestProjectDate;
 }
 
 // Sort projects by priority and start date
@@ -446,7 +456,7 @@ function calculateResourceUtilization(scheduledProjects, availableEngineers) {
 }
 
 // Main schedule calculation function
-export function calculateSchedule(projects, engineers, planExcludes = []) {
+export function calculateSchedule(projects, engineers, planExcludes = [], planStartDate = null) {
   // Early return for empty inputs
   if (!projects?.length || !engineers?.length) {
     return {
@@ -467,7 +477,7 @@ export function calculateSchedule(projects, engineers, planExcludes = []) {
   const assignments = [];
   
   // Find base date and sort projects
-  const baseDate = findBaseDate(projects);
+  const baseDate = findBaseDate(projects, planStartDate);
   const sortedProjects = sortProjects(projects, baseDate);
 
   // Create a map to track engineer availability
