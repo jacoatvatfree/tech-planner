@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { usePlanStore } from "../store/planStore";
 import { useProjectStore } from "../store/projectStore";
 import { useEngineerStore } from "../store/engineerStore";
@@ -7,9 +7,20 @@ import { calculateSchedule } from "../lib/scheduler/calculateSchedule";
 import { v4 as uuidv4 } from "uuid";
 
 export default function Dashboard() {
-  const { currentPlanId, plans, currentPlan: getCurrentPlan } = usePlanStore();
-  const { projects, initializeProjects } = useProjectStore();
-  const { engineers, initializeEngineers } = useEngineerStore();
+  // Get data from stores with more specific selectors
+  const { currentPlan, currentPlanId } = usePlanStore(state => ({
+    currentPlan: state.currentPlan(),
+    currentPlanId: state.currentPlanId
+  }));
+  
+  const { projects } = useProjectStore(state => ({
+    projects: state.projects
+  }));
+  
+  const { engineers } = useEngineerStore(state => ({
+    engineers: state.engineers
+  }));
+  
   const [utilization, setUtilization] = useState({
     totalCapacityHours: 0,
     assignedHours: 0,
@@ -17,6 +28,7 @@ export default function Dashboard() {
   });
   const [scheduleData, setScheduleData] = useState();
 
+  // Memoize filtered data
   const planProjects = React.useMemo(
     () => projects.filter((p) => p.planId === currentPlanId),
     [projects, currentPlanId],
@@ -27,54 +39,45 @@ export default function Dashboard() {
     [engineers, currentPlanId],
   );
 
-  // Initialize data when plan changes
-  useEffect(() => {
-    if (currentPlanId) {
-      initializeProjects(currentPlanId);
-      initializeEngineers(currentPlanId);
+  // Memoize schedule calculation
+  const calculateScheduleData = useCallback(() => {
+    if (!planProjects.length || !planEngineers.length || !currentPlan) {
+      return null;
     }
-  }, [currentPlanId, initializeProjects, initializeEngineers]);
+    return calculateSchedule(planProjects, planEngineers, currentPlan?.excludes || []);
+  }, [planProjects, planEngineers, currentPlan]);
 
-  // Calculate schedule when projects or engineers change
-  const currentScheduleData = React.useMemo(() => {
-    const plan = getCurrentPlan();
-    return calculateSchedule(planProjects, planEngineers, plan?.excludes || []);
-  }, [planProjects, planEngineers, getCurrentPlan]);
-
-  // Update schedule state and calculate utilization
-  useEffect(() => {
-    setScheduleData(currentScheduleData);
-
-    const plan = getCurrentPlan();
-    if (!currentPlanId || !planEngineers.length || !plan) {
-      // Reset utilization when there's no valid data
-      setUtilization({
+  // Calculate utilization
+  const calculateUtilization = useCallback(() => {
+    if (!currentPlanId || !planEngineers.length || !currentPlan || !scheduleData) {
+      return {
         totalCapacityHours: 0,
         assignedHours: 0,
         utilizationPercentage: 0,
-      });
-      return;
+      };
     }
+    
+    return calculatePlanCapacity(
+      planEngineers,
+      scheduleData,
+      currentPlan,
+      planProjects,
+    );
+  }, [currentPlanId, planEngineers, currentPlan, scheduleData, planProjects]);
 
-    if (currentScheduleData) {
-      const capacityData = calculatePlanCapacity(
-        planEngineers,
-        currentScheduleData,
-        plan,
-        planProjects,
-      );
-      setUtilization(capacityData);
-    }
-  }, [
-    currentPlanId,
-    currentScheduleData,
-    planEngineers,
-    planProjects,
-    getCurrentPlan,
-  ]);
+  // Update schedule data when dependencies change
+  useEffect(() => {
+    const newScheduleData = calculateScheduleData();
+    setScheduleData(newScheduleData);
+  }, [calculateScheduleData]);
+
+  // Update utilization when schedule data changes
+  useEffect(() => {
+    const newUtilization = calculateUtilization();
+    setUtilization(newUtilization);
+  }, [calculateUtilization]);
 
   const handleExportPlan = () => {
-    const currentPlan = getCurrentPlan();
     if (!currentPlan) return;
 
     const exportData = {

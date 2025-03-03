@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { usePlanStore } from "./planStore";
+import logger from "../utils/logger";
 
 const STORAGE_KEY = "projects_data";
 
@@ -10,6 +10,7 @@ const getInitialState = (planId) => {
 
 const useProjectStore = create((set, get) => ({
   projects: [],
+  currentPlanId: null, // Store the current plan ID locally
   schedule: {
     assignments: [],
     scheduledProjects: [],
@@ -19,8 +20,9 @@ const useProjectStore = create((set, get) => ({
       percentage: 0,
     },
   },
+  setCurrentPlanId: (planId) => set({ currentPlanId: planId }),
   initializeProjects: (planId) => {
-    set({ projects: getInitialState(planId) });
+    set({ projects: getInitialState(planId), currentPlanId: planId });
   },
   setSchedule: (scheduleData) =>
     set((state) => ({
@@ -32,53 +34,76 @@ const useProjectStore = create((set, get) => ({
     })),
   addProject: (project) =>
     set((state) => {
-      const { currentPlanId } = usePlanStore.getState();
+      const planId = state.currentPlanId;
+      if (!planId) {
+        logger.error("Cannot add project: No plan selected");
+        return state;
+      }
+      
       const newState = {
         projects: [...state.projects, project],
       };
       localStorage.setItem(
-        `${STORAGE_KEY}_${currentPlanId}`,
+        `${STORAGE_KEY}_${planId}`,
         JSON.stringify(newState.projects),
       );
       return newState;
     }),
   updateProject: (updatedProject) =>
     set((state) => {
-      console.log("projectStore: Updating with:", updatedProject);
-      const { currentPlanId } = usePlanStore.getState();
+      const planId = state.currentPlanId;
+      if (!planId) {
+        logger.error("Cannot update project: No plan selected");
+        return state;
+      }
+      
       const newState = {
         projects: state.projects.map((project) =>
           project.id === updatedProject.id ? updatedProject : project,
         ),
       };
-      console.log("projectStore: New state:", newState.projects);
       localStorage.setItem(
-        `${STORAGE_KEY}_${currentPlanId}`,
+        `${STORAGE_KEY}_${planId}`,
         JSON.stringify(newState.projects),
       );
       return newState;
     }),
   removeProject: (id) =>
     set((state) => {
-      const { currentPlanId } = usePlanStore.getState();
+      const planId = state.currentPlanId;
+      if (!planId) {
+        logger.error("Cannot remove project: No plan selected");
+        return state;
+      }
+      
       const newState = {
         projects: state.projects.filter((project) => project.id !== id),
       };
       localStorage.setItem(
-        `${STORAGE_KEY}_${currentPlanId}`,
+        `${STORAGE_KEY}_${planId}`,
         JSON.stringify(newState.projects),
       );
       return newState;
     }),
   clearProjects: () =>
-    set(() => {
-      const { currentPlanId } = usePlanStore.getState();
-      localStorage.removeItem(`${STORAGE_KEY}_${currentPlanId}`);
+    set((state) => {
+      const planId = state.currentPlanId;
+      if (!planId) {
+        logger.error("Cannot clear projects: No plan selected");
+        return state;
+      }
+      
+      localStorage.removeItem(`${STORAGE_KEY}_${planId}`);
       return { projects: [] };
     }),
   reprioritizeProjects: () =>
     set((state) => {
-      const { currentPlanId } = usePlanStore.getState();
+      const planId = state.currentPlanId;
+      if (!planId) {
+        logger.error("Cannot reprioritize projects: No plan selected");
+        return state;
+      }
+      
       const sortedProjects = [...state.projects]
         .sort((a, b) => a.priority - b.priority)
         .map((project, index) => ({
@@ -87,7 +112,7 @@ const useProjectStore = create((set, get) => ({
         }));
 
       localStorage.setItem(
-        `${STORAGE_KEY}_${currentPlanId}`,
+        `${STORAGE_KEY}_${planId}`,
         JSON.stringify(sortedProjects),
       );
       return { projects: sortedProjects };

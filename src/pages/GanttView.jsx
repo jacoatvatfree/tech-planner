@@ -1,42 +1,58 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useProjectStore } from "../store/projectStore";
 import { useEngineerStore } from "../store/engineerStore";
 import { usePlanStore } from "../store/planStore";
+import logger from "../utils/logger";
 import { generateGanttMarkup } from "../lib/scheduler/generateGanttMarkup";
 import { calculateSchedule } from "../lib/scheduler/calculateSchedule";
 import GanttChart from "../components/gantt/GanttChart";
 import { Statistics } from "../components/gantt/Statistics";
 
 export default function GanttView() {
-  const { currentPlan: getCurrentPlan, currentPlanId } = usePlanStore();
-  const currentPlan = getCurrentPlan();
-  const { projects, setSchedule, initializeProjects } = useProjectStore();
-  const { engineers, initializeEngineers, updateEngineer } = useEngineerStore();
+  // Get data from stores with more specific selectors
+  const { currentPlan, currentPlanId } = usePlanStore(state => ({
+    currentPlan: state.currentPlan(),
+    currentPlanId: state.currentPlanId
+  }));
+  
+  const { projects, setSchedule } = useProjectStore(state => ({
+    projects: state.projects,
+    setSchedule: state.setSchedule
+  }));
+  
+  const { engineers, updateEngineer } = useEngineerStore(state => ({
+    engineers: state.engineers,
+    updateEngineer: state.updateEngineer
+  }));
+  
   const [scheduleData, setScheduleData] = useState(null);
   const [markup, setMarkup] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [viewType, setViewType] = useState("resource");
 
-  useEffect(() => {
-    if (currentPlanId) {
-      console.log("Initializing data for plan:", currentPlanId);
-      initializeProjects(currentPlanId);
-      initializeEngineers(currentPlanId);
-    }
-  }, [currentPlanId, initializeProjects, initializeEngineers]);
+  // Memoize filtered data
+  const planProjects = useMemo(
+    () => projects.filter((p) => p.planId === currentPlanId),
+    [projects, currentPlanId]
+  );
+
+  const planEngineers = useMemo(
+    () => engineers.filter((e) => e.planId === currentPlanId),
+    [engineers, currentPlanId]
+  );
 
   // Separate effect for updating engineer planIds
   useEffect(() => {
     if (currentPlanId && engineers.length > 0) {
       const engineersToUpdate = engineers.filter(
-        (engineer) => !engineer.planId,
+        (engineer) => !engineer.planId
       );
       engineersToUpdate.forEach((engineer) => {
         updateEngineer(engineer.id, { ...engineer, planId: currentPlanId });
       });
     }
-  }, [currentPlanId, engineers.length]); // Only depend on length changes
+  }, [currentPlanId, engineers, updateEngineer]);
 
   // Wait for currentPlan to be defined
   useEffect(() => {
@@ -49,101 +65,72 @@ export default function GanttView() {
     }
   }, [currentPlan]);
 
-  const planProjects = projects.filter((p) => p.planId === currentPlanId);
-  const planEngineers = currentPlanId
-    ? engineers.map((engineer) => ({
-        ...engineer,
-        planId: currentPlanId,
-      }))
-    : [];
-  console.log("Current Plan:", currentPlan);
-  console.log("All Projects:", projects);
-  console.log("Filtered Plan Projects:", planProjects);
-  console.log("All Engineers:", engineers);
-  console.log("Filtered Plan Engineers:", planEngineers);
-  console.log("Current Plan ID:", currentPlanId);
+  // Memoize schedule calculation and markup generation
+  const calculateAndSetSchedule = useCallback(() => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const calculateAndSetSchedule = () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        // Skip calculation if no projects or engineers
-        if (!planProjects?.length || !planEngineers?.length) {
-          if (isMounted) {
-            setScheduleData(null);
-
-            console.log("end date", currentPlan);
-            setMarkup(generateGanttMarkup([], [], [], currentPlan));
-          }
-          return;
-        }
-
-        const result = calculateSchedule(
-          planProjects,
-          planEngineers,
-          currentPlan?.excludes || [],
-        );
-
-        if (!isMounted) return;
-
-        // Only update if we have actual changes
-        const resultString = JSON.stringify(result);
-        setScheduleData((prevData) => {
-          const prevString = JSON.stringify(prevData);
-          return prevString === resultString ? prevData : result;
-        });
-
-        // Only update store if assignments have changed
-        const currentAssignments = JSON.stringify(result?.assignments || []);
-        const prevAssignments = JSON.stringify(scheduleData?.assignments || []);
-        if (currentAssignments !== prevAssignments) {
-          setSchedule(result);
-        }
-
-        const newMarkup = generateGanttMarkup(
-          result?.assignments || [],
-          planEngineers,
-          planProjects,
-          currentPlan,
-          viewType,
-        );
-
-        if (!newMarkup) {
-          throw new Error("Failed to generate Gantt markup");
-        }
-
-        if (isMounted) {
-          setMarkup(newMarkup);
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err.message);
-          console.error("Schedule calculation failed:", err);
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+      // Skip calculation if no projects or engineers
+      if (!planProjects?.length || !planEngineers?.length || !currentPlan) {
+        setScheduleData(null);
+        setMarkup(generateGanttMarkup([], [], [], currentPlan || {}));
+        setIsLoading(false);
+        return;
       }
-    };
 
-    calculateAndSetSchedule();
+      const result = calculateSchedule(
+        planProjects,
+        planEngineers,
+        currentPlan?.excludes || []
+      );
 
-    return () => {
-      isMounted = false;
-    };
+      // Only update if we have actual changes
+      const resultString = JSON.stringify(result);
+      setScheduleData((prevData) => {
+        const prevString = JSON.stringify(prevData);
+        return prevString === resultString ? prevData : result;
+      });
+
+      // Only update store if assignments have changed
+      const currentAssignments = JSON.stringify(result?.assignments || []);
+      const prevAssignments = JSON.stringify(scheduleData?.assignments || []);
+      if (currentAssignments !== prevAssignments) {
+        setSchedule(result);
+      }
+
+      const newMarkup = generateGanttMarkup(
+        result?.assignments || [],
+        planEngineers,
+        planProjects,
+        currentPlan,
+        viewType
+      );
+
+      if (!newMarkup) {
+        throw new Error("Failed to generate Gantt markup");
+      }
+
+      setMarkup(newMarkup);
+    } catch (err) {
+      setError(err.message);
+      logger.error("Schedule calculation failed:", err);
+    } finally {
+      setIsLoading(false);
+    }
   }, [
-    currentPlan?.startDate,
-    currentPlan?.endDate,
-    planProjects, // Watch filtered projects instead of all projects
-    planEngineers, // Watch filtered engineers instead of all engineers
+    currentPlan,
+    planProjects,
+    planEngineers,
     viewType,
-    currentPlanId,
+    scheduleData,
+    setSchedule
   ]);
+
+  // Update schedule when dependencies change
+  useEffect(() => {
+    calculateAndSetSchedule();
+  }, [calculateAndSetSchedule]);
   if (error) {
     return (
       <div className="p-4 bg-red-50 text-red-700 rounded">Error: {error}</div>

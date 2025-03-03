@@ -1,5 +1,27 @@
 import { v4 as uuidv4 } from "uuid";
 import { create } from "zustand";
+import { useProjectStore } from "./projectStore";
+import { useEngineerStore } from "./engineerStore";
+import logger from "../utils/logger";
+
+// Helper function to recursively regenerate all "id" properties in an object or array.
+// This assigns a new uuid for every property named "id".
+function regenerateIds(obj) {
+  if (Array.isArray(obj)) {
+    return obj.map(item => regenerateIds(item));
+  } else if (obj && typeof obj === "object") {
+    const newObj = {};
+    for (const key in obj) {
+      if (key === "id") {
+        newObj[key] = uuidv4();
+      } else {
+        newObj[key] = regenerateIds(obj[key]);
+      }
+    }
+    return newObj;
+  }
+  return obj;
+}
 
 const STORAGE_KEY = "plans_data";
 const CURRENT_PLAN_KEY = "current_plan_id";
@@ -18,15 +40,60 @@ const usePlanStore = create((set, get) => ({
   initializeFromStorage: () =>
     set((state) => {
       const storedCurrentPlanId = localStorage.getItem(CURRENT_PLAN_KEY);
+      const newCurrentPlanId = storedCurrentPlanId ? storedCurrentPlanId : null;
+      
+      // Initialize other stores with the current plan ID
+      if (newCurrentPlanId) {
+        get().syncCurrentPlanId(newCurrentPlanId);
+      }
+      
       return {
         ...state,
-        currentPlanId: storedCurrentPlanId ? storedCurrentPlanId : null,
+        currentPlanId: newCurrentPlanId,
         initialized: true,
       };
     }),
+  // Synchronize the current plan ID with other stores
+  syncCurrentPlanId: (id) => {
+    // Update the project store
+    try {
+      const projectStore = useProjectStore.getState();
+      if (projectStore && projectStore.setCurrentPlanId) {
+        projectStore.setCurrentPlanId(id);
+        if (id) projectStore.initializeProjects(id);
+      }
+    } catch (e) {
+      logger.error("Failed to sync plan ID with project store:", e);
+    }
+    
+    // Update the engineer store
+    try {
+      const engineerStore = useEngineerStore.getState();
+      if (engineerStore && engineerStore.setCurrentPlanId) {
+        engineerStore.setCurrentPlanId(id);
+        if (id) engineerStore.initializeEngineers(id);
+      }
+    } catch (e) {
+      logger.error("Failed to sync plan ID with engineer store:", e);
+    }
+  },
   addPlan: (plan) =>
     set((state) => {
       const newPlan = { id: uuidv4(), ...plan };
+      const newState = {
+        plans: [...state.plans, newPlan],
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newState.plans));
+      return newState;
+    }),
+  // New function to import a plan by regenerating all nested ids.
+  importPlan: (plan) =>
+    set((state) => {
+      // Recursively regenerate ids in the imported plan.
+      const regeneratedPlan = regenerateIds(plan);
+      // Remove the root id so that addPlan can assign a new one.
+      delete regeneratedPlan.id;
+      const newPlan = { id: uuidv4(), ...regeneratedPlan };
       const newState = {
         plans: [...state.plans, newPlan],
       };
@@ -48,7 +115,7 @@ const usePlanStore = create((set, get) => ({
       const newState = {
         plans: state.plans.filter((plan) => plan.id !== id),
       };
-      // Remove associated data from localStorage
+      // Remove associated data from localStorage.
       localStorage.removeItem(`projects_data_${id}`);
       localStorage.removeItem(`engineers_data_${id}`);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newState.plans));
@@ -57,12 +124,28 @@ const usePlanStore = create((set, get) => ({
   setCurrentPlanId: (id) =>
     set((state) => {
       localStorage.setItem(CURRENT_PLAN_KEY, id?.toString() || "");
-      return { ...state, currentPlanId: id };
+      
+      // Force a shallow update of the active plan to trigger UI refresh
+      const updatedPlans = state.plans.map(plan => {
+        if(plan.id === id){
+          return { ...plan };
+        }
+        return plan;
+      });
+      
+      // Synchronize with other stores
+      get().syncCurrentPlanId(id);
+      
+      return { ...state, currentPlanId: id, plans: updatedPlans };
     }),
   clearPlans: () =>
-    set(() => {
+    set((state) => {
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(CURRENT_PLAN_KEY);
+      
+      // Clear the current plan ID in other stores
+      get().syncCurrentPlanId(null);
+      
       return { plans: [], currentPlanId: null };
     }),
 }));

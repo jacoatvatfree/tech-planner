@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { usePlanStore } from "../store/planStore";
 import { useProjectStore } from "../store/projectStore";
 import { useEngineerStore } from "../store/engineerStore";
+import logger from "../utils/logger";
 import { makePlan } from "../lib/factories";
 import {
   PlusIcon,
@@ -148,7 +149,7 @@ export default function PlanSelector() {
     removePlan,
   } = usePlanStore();
   const [planToEdit, setPlanToEdit] = useState(null);
-  const { initializeProjects } = useProjectStore();
+  const { initializeProjects, addProject } = useProjectStore();
   const { initializeEngineers, addEngineer } = useEngineerStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -169,16 +170,7 @@ export default function PlanSelector() {
 
   const handleDeletePlan = async (planId, planName) => {
     if (window.confirm(`Delete plan "${planName}" and all its data?`)) {
-      // Clear current plan ID if it's the one being deleted
-      if (currentPlanId === planId) {
-        setCurrentPlanId(null);
-      }
-
-      // Clear associated projects and engineers
-      await useProjectStore.getState().clearProjects();
-      await useEngineerStore.getState().clearEngineers();
-
-      // Remove the plan
+      // Remove the plan - this will also clear the current plan ID and notify other stores
       removePlan(planId);
     }
   };
@@ -206,15 +198,12 @@ export default function PlanSelector() {
       // Add the new plan
       await addPlan(newPlan);
 
-      // Set the current plan ID immediately
+      // Set the current plan ID immediately - this will initialize other stores
       setCurrentPlanId(newPlanId);
 
       // Create a mapping of old to new IDs for engineers and projects
       const engineerIdMap = {};
       const projectIdMap = {};
-
-      // Initialize stores for the new plan
-      await useEngineerStore.getState().initializeEngineers(newPlanId);
 
       // Import engineers first and build ID mapping
       const engineerPromises = importData.engineers.map((engineer) => {
@@ -228,15 +217,10 @@ export default function PlanSelector() {
           planId: newPlanId,
           allocations: [], // Reset allocations as they'll be set via project updates
         };
-        return useEngineerStore.getState().addEngineer(newEngineer);
+        return addEngineer(newEngineer);
       });
 
       await Promise.all(engineerPromises);
-
-      console.log("Importing projects:", importData.projects); // Debug log
-
-      // Initialize project store for the new plan
-      await useProjectStore.getState().initializeProjects(newPlanId);
 
       // Import projects with their allocations in a single step
       const projectPromises = importData.projects.map((project) => {
@@ -244,34 +228,46 @@ export default function PlanSelector() {
         const newId = uuidv4();
         projectIdMap[oldId] = newId;
 
-        // Map the allocations with new IDs if they exist
+        // Map the allocations with new IDs if they exist and reset only 1970-01-01 dates
         const newAllocations = project.allocations
-          ? project.allocations.map((allocation) => ({
-              engineerId: engineerIdMap[allocation.engineerId],
-              projectId: newId,
-              startDate: new Date(allocation.startDate),
-              endDate: new Date(allocation.endDate),
-              percentage: allocation.percentage,
-            }))
+          ? project.allocations.map((allocation) => {
+              // Check if dates are 1970-01-01 (epoch) or invalid
+              const startDate = new Date(allocation.startDate);
+              const endDate = new Date(allocation.endDate);
+              const isStartDateEpoch = startDate.getFullYear() === 1970;
+              const isEndDateEpoch = endDate.getFullYear() === 1970;
+              
+              return {
+                engineerId: engineerIdMap[allocation.engineerId],
+                projectId: newId,
+                startDate: isStartDateEpoch ? null : startDate,
+                endDate: isEndDateEpoch ? null : endDate,
+                percentage: allocation.percentage,
+              };
+            })
           : [];
 
+        // Check if startAfter is 1970-01-01 (epoch) or invalid
+        const startAfter = project.startAfter ? new Date(project.startAfter) : null;
+        const isStartAfterEpoch = startAfter && startAfter.getFullYear() === 1970;
+        
         const newProject = {
           ...project,
           id: newId,
-          startAfter: project.startAfter ? new Date(project.startAfter) : null,
-          endBefore: project.endBefore ? new Date(project.endBefore) : null,
+          startAfter: isStartAfterEpoch ? null : startAfter, // Only reset if it's 1970-01-01
+          endBefore: project.endBefore ? new Date(project.endBefore) : null, // Keep endBefore as it's a constraint
           planId: newPlanId,
           allocations: newAllocations,
         };
 
-        return useProjectStore.getState().addProject(newProject);
+        return addProject(newProject);
       });
 
       await Promise.all(projectPromises);
       // Reset the file input
       event.target.value = "";
     } catch (error) {
-      console.error("Error importing plan:", error);
+      logger.error("Error importing plan:", error);
       alert("Error importing plan. Please check the file format.");
     }
   };

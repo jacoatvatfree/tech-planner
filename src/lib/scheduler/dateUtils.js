@@ -1,5 +1,34 @@
+// Cache for expensive date calculations
+const dateCache = {
+  excludedDates: new Map(),
+  nextWeekday: new Map(),
+  addWorkingDays: new Map(),
+  parsedExcludes: new Map(),
+};
+
+// Clear cache when it gets too large
+function clearDateCache() {
+  if (dateCache.excludedDates.size > 1000 || 
+      dateCache.nextWeekday.size > 1000 || 
+      dateCache.addWorkingDays.size > 1000 ||
+      dateCache.parsedExcludes.size > 100) {
+    dateCache.excludedDates.clear();
+    dateCache.nextWeekday.clear();
+    dateCache.addWorkingDays.clear();
+    dateCache.parsedExcludes.clear();
+  }
+}
+
+// Parse exclude strings into structured objects
 function parseExclude(exclude) {
+  // Return early for already parsed objects
   if (typeof exclude === "object") return exclude;
+  
+  // Check cache first
+  const cacheKey = String(exclude);
+  if (dateCache.parsedExcludes.has(cacheKey)) {
+    return dateCache.parsedExcludes.get(cacheKey);
+  }
 
   const weekdayMap = {
     sunday: 0,
@@ -13,33 +42,55 @@ function parseExclude(exclude) {
     weekdays: [1, 2, 3, 4, 5],
   };
 
-  const day = exclude.toLowerCase();
-  if (weekdayMap[day]) {
-    return Array.isArray(weekdayMap[day])
-      ? weekdayMap[day].map((d) => ({ weekday: d }))
-      : [{ weekday: weekdayMap[day] }];
+  let result = null;
+  
+  // Handle named days
+  if (typeof exclude === "string") {
+    const day = exclude.toLowerCase();
+    if (weekdayMap[day]) {
+      result = Array.isArray(weekdayMap[day])
+        ? weekdayMap[day].map((d) => ({ weekday: d }))
+        : [{ weekday: weekdayMap[day] }];
+    } else {
+      // Try to parse as date if it's not a named day
+      const date = new Date(exclude);
+      if (!isNaN(date.getTime())) {
+        result = [{ date: date.toISOString() }];
+      }
+    }
   }
-
-  // Try to parse as date if it's not a named day
-  const date = new Date(exclude);
-  if (!isNaN(date.getTime())) {
-    return [{ date: date.toISOString() }];
-  }
-
-  return null;
+  
+  // Cache the result
+  dateCache.parsedExcludes.set(cacheKey, result);
+  return result;
 }
 
 export const dateUtils = {
+  // Check if a date is excluded based on the excludes list
   isExcludedDate: (date, excludes) => {
     if (!excludes?.length) return false;
 
+    // Create a cache key
+    const dateStr = date instanceof Date ? date.toISOString() : new Date(date).toISOString();
+    const excludesKey = Array.isArray(excludes) ? excludes.join(',') : String(excludes);
+    const cacheKey = `${dateStr}_${excludesKey}`;
+    
+    // Check cache
+    if (dateCache.excludedDates.has(cacheKey)) {
+      return dateCache.excludedDates.get(cacheKey);
+    }
+    
+    // Convert date to a consistent format
     const dayjs = new Date(date);
+    
+    // Parse excludes only once and cache the result
     const parsedExcludes = excludes.flatMap((exclude) => {
       const parsed = parseExclude(exclude);
       return parsed || [];
     });
 
-    return parsedExcludes.some((exclude) => {
+    // Check if date is excluded
+    const isExcluded = parsedExcludes.some((exclude) => {
       // Handle specific dates
       if (exclude.date) {
         const excludeDate = new Date(exclude.date);
@@ -55,29 +106,60 @@ export const dateUtils = {
       }
       return false;
     });
+    
+    // Cache the result
+    dateCache.excludedDates.set(cacheKey, isExcluded);
+    return isExcluded;
   },
+  
+  // Normalize a date by setting time to midnight
   normalize: (date) => {
+    if (!date) return new Date();
+    
     const result = new Date(date);
     result.setHours(0, 0, 0, 0);
     return result;
   },
 
+  // Convert date to ISO string with local timezone adjustment
   toISOLocalString: (d) => {
-    d.setTime(d.getTime() - d.getTimezoneOffset() * 60000);
-    return d.toISOString().split("T")[0].replace(/-/g, "/");
+    if (!d) return '';
+    
+    const copy = new Date(d);
+    copy.setTime(copy.getTime() - copy.getTimezoneOffset() * 60000);
+    return copy.toISOString().split("T")[0].replace(/-/g, "/");
   },
 
+  // Check if a date is a weekend
   isWeekend: (date) => {
+    if (!date) return false;
+    
     const day = date.getDay();
     return day === 0 || day === 6;
   },
 
+  // Get the next weekday from a date
   getNextWeekday: (date) => {
+    if (!date) return new Date();
+    
+    // Create a cache key
+    const dateStr = date instanceof Date ? date.toISOString() : new Date(date).toISOString();
+    
+    // Check cache
+    if (dateCache.nextWeekday.has(dateStr)) {
+      // Return a new date object to avoid mutation issues
+      return new Date(dateCache.nextWeekday.get(dateStr));
+    }
+    
     const result = new Date(date);
+    
     // If it's a weekend, move to next Monday
     if (dateUtils.isWeekend(result)) {
-      while (dateUtils.isWeekend(result)) {
+      // Limit iterations to prevent infinite loops
+      let iterations = 0;
+      while (dateUtils.isWeekend(result) && iterations < 7) {
         result.setDate(result.getDate() + 1);
+        iterations++;
       }
     } else {
       // If it's a Sunday (0) or Saturday (6), move to Monday
@@ -88,21 +170,47 @@ export const dateUtils = {
         result.setDate(result.getDate() + 2);
       }
     }
+    
+    // Cache the result
+    dateCache.nextWeekday.set(dateStr, result.toISOString());
     return result;
   },
 
+  // Add business days to a date
   addBusinessDays: (date, days) => {
+    if (!date) return new Date();
+    if (!days || days <= 0) return new Date(date);
+    
     const result = new Date(date);
     result.setDate(result.getDate() + Math.ceil(days));
     return dateUtils.getNextWeekday(result);
   },
 
+  // Add working days to a date, skipping weekends and excluded dates
   addWorkingDays: (date, workDays, excludes = []) => {
+    if (!date) return new Date();
+    if (!workDays || workDays <= 0) return new Date(date);
+    
+    // Create a cache key
+    const dateStr = date instanceof Date ? date.toISOString() : new Date(date).toISOString();
+    const excludesKey = Array.isArray(excludes) ? excludes.join(',') : String(excludes);
+    const cacheKey = `${dateStr}_${workDays}_${excludesKey}`;
+    
+    // Check cache
+    if (dateCache.addWorkingDays.has(cacheKey)) {
+      // Return a new date object to avoid mutation issues
+      return new Date(dateCache.addWorkingDays.get(cacheKey));
+    }
+    
     const result = new Date(date);
     let daysAdded = 0;
-
-    while (daysAdded < workDays) {
+    let iterations = 0;
+    const maxIterations = Math.min(workDays * 3, 1000); // Safety limit
+    
+    while (daysAdded < workDays && iterations < maxIterations) {
       result.setDate(result.getDate() + 1);
+      iterations++;
+      
       if (
         !dateUtils.isWeekend(result) &&
         !dateUtils.isExcludedDate(result, excludes)
@@ -110,7 +218,13 @@ export const dateUtils = {
         daysAdded++;
       }
     }
-
+    
+    // Cache the result
+    dateCache.addWorkingDays.set(cacheKey, result.toISOString());
+    
+    // Clear cache if it gets too large
+    clearDateCache();
+    
     return result;
   },
 };

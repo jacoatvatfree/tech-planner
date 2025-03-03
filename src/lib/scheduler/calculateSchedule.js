@@ -1,4 +1,5 @@
 import { dateUtils } from "./dateUtils";
+import logger from "../../utils/logger";
 
 // Project scheduling helper functions
 const schedulingUtils = {
@@ -115,206 +116,256 @@ const schedulingUtils = {
   },
 };
 
-export function calculateSchedule(projects, engineers, planExcludes = []) {
-  if (!projects?.length || !engineers?.length) {
-    return [];
+// Cache for expensive calculations
+const calculationCache = {
+  projectDuration: new Map(),
+  overlappingAssignments: new Map(),
+  workloadCache: new Map(),
+};
+
+// Clear cache when needed
+function clearCalculationCache() {
+  calculationCache.projectDuration.clear();
+  calculationCache.overlappingAssignments.clear();
+  calculationCache.workloadCache.clear();
+}
+
+// Memoized version of calculateProjectDuration
+function memoizedCalculateProjectDuration(project, engineers, excludes) {
+  const cacheKey = `${project.id}_${project.estimatedHours}_${JSON.stringify(project.allocations)}`;
+  
+  if (calculationCache.projectDuration.has(cacheKey)) {
+    return calculationCache.projectDuration.get(cacheKey);
   }
+  
+  const result = schedulingUtils.calculateProjectDuration(project, engineers, excludes);
+  calculationCache.projectDuration.set(cacheKey, result);
+  return result;
+}
 
-  const assignments = [];
+// Memoized version of findOverlappingAssignments
+function memoizedFindOverlappingAssignments(assignments, engineerId, startDate, endDate, excludes) {
+  const startStr = startDate.toISOString();
+  const endStr = endDate.toISOString();
+  const cacheKey = `${engineerId}_${startStr}_${endStr}`;
+  
+  if (calculationCache.overlappingAssignments.has(cacheKey)) {
+    return calculationCache.overlappingAssignments.get(cacheKey);
+  }
+  
+  const result = schedulingUtils.findOverlappingAssignments(
+    assignments, engineerId, startDate, endDate, excludes
+  );
+  calculationCache.overlappingAssignments.set(cacheKey, result);
+  return result;
+}
 
-  const baseDate = dateUtils.normalize(
+// Find the base date for scheduling
+function findBaseDate(projects) {
+  return dateUtils.normalize(
     projects.reduce((earliest, project) => {
       if (!project.startAfter) return earliest;
       const projectStart = new Date(project.startAfter);
       return projectStart < earliest ? projectStart : earliest;
-    }, new Date()),
+    }, new Date())
   );
+}
 
-  const sortedProjects = [...projects].sort((a, b) => {
+// Sort projects by priority and start date
+function sortProjects(projects, baseDate) {
+  return [...projects].sort((a, b) => {
     if (a.priority !== b.priority) return a.priority - b.priority;
     const aStart = a.startAfter ? new Date(a.startAfter) : baseDate;
     const bStart = b.startAfter ? new Date(b.startAfter) : baseDate;
     return aStart - bStart;
   });
+}
 
-  for (const project of sortedProjects) {
-    if (!project.allocations?.length || !project.estimatedHours) {
-      console.warn(
-        `Project ${project.name} skipped - missing allocations or hours`,
+// Find a common start date for a project where all engineers have capacity
+function findCommonStartDate(project, engineers, assignments, baseDate, weeksNeeded, planExcludes, sortedProjects) {
+  // Use project's startAfter date if specified, otherwise use the plan's base date
+  let latestPossibleStart = new Date(
+    Math.max(
+      project.startAfter
+        ? new Date(project.startAfter).getTime()
+        : baseDate.getTime(),
+      baseDate.getTime()
+    )
+  );
+
+  // For each engineer, find their earliest possible start date
+  for (const allocation of project.allocations) {
+    const engineer = engineers.find((e) => e.id === allocation.engineerId);
+    if (!engineer) continue;
+
+    // Find the engineer's last project
+    const engineerAssignments = assignments.filter((a) => a.engineerId === engineer.id);
+    let latestEndDate = latestPossibleStart;
+    
+    for (const assignment of engineerAssignments) {
+      const assignmentEnd = dateUtils.addWorkingDays(
+        new Date(assignment.startDate),
+        Math.ceil(assignment.weeksNeeded * 5),
+        planExcludes
       );
-      continue;
-    }
-
-    const weeksNeeded = schedulingUtils.calculateProjectDuration(
-      project,
-      engineers,
-      planExcludes,
-    );
-
-    // Calculate weeks between base date and project start date
-    const projectStartDate = project.startAfter
-      ? new Date(project.startAfter)
-      : baseDate;
-
-    // Find a common start date where all engineers have capacity
-    let commonStartDate = null;
-
-    // First, find the latest individual start date among all engineers
-    let latestPossibleStart = new Date(
-      Math.max(
-        project.startAfter
-          ? new Date(project.startAfter).getTime()
-          : baseDate.getTime(),
-        baseDate.getTime(),
-      ),
-    );
-
-    // For each engineer, find their earliest possible start date
-    for (const allocation of project.allocations) {
-      const engineer = engineers.find((e) => e.id === allocation.engineerId);
-      if (!engineer) continue;
-
-      const engineerLastProject = assignments
-        .filter((a) => a.engineerId === engineer.id)
-        .sort((a, b) => {
-          const aEnd = dateUtils.addWorkingDays(
-            new Date(a.startDate),
-            Math.ceil(a.weeksNeeded * 5),
-            planExcludes,
-          );
-          const bEnd = dateUtils.addWorkingDays(
-            new Date(b.startDate),
-            Math.ceil(b.weeksNeeded * 5),
-            planExcludes,
-          );
-          return bEnd - aEnd;
-        })
-        .pop();
-
-      const engineerEarliestStart = engineerLastProject
-        ? dateUtils.addWorkingDays(
-            new Date(engineerLastProject.startDate),
-            Math.ceil(engineerLastProject.weeksNeeded * 5),
-            planExcludes,
-          )
-        : new Date(latestPossibleStart);
-
-      if (engineerEarliestStart > latestPossibleStart) {
-        latestPossibleStart = new Date(engineerEarliestStart);
+      
+      if (assignmentEnd > latestEndDate) {
+        latestEndDate = assignmentEnd;
       }
     }
 
-    // Ensure it's a weekday
-    // Ensure it's not a weekend or excluded date
-    while (
-      dateUtils.isWeekend(latestPossibleStart) ||
-      dateUtils.isExcludedDate(latestPossibleStart, planExcludes)
-    ) {
-      latestPossibleStart.setDate(latestPossibleStart.getDate() + 1);
+    if (latestEndDate > latestPossibleStart) {
+      latestPossibleStart = new Date(latestEndDate);
     }
+  }
 
-    // Now find a date where all engineers have enough capacity
-    let searching = true;
-    let candidateDate = new Date(latestPossibleStart);
+  // Ensure it's not a weekend or excluded date
+  while (
+    dateUtils.isWeekend(latestPossibleStart) ||
+    dateUtils.isExcludedDate(latestPossibleStart, planExcludes)
+  ) {
+    latestPossibleStart.setDate(latestPossibleStart.getDate() + 1);
+  }
 
-    while (searching) {
-      const allEngineersAvailable = project.allocations.every((allocation) => {
-        const engineer = engineers.find((e) => e.id === allocation.engineerId);
-        if (!engineer) return false;
+  // Now find a date where all engineers have enough capacity
+  let candidateDate = new Date(latestPossibleStart);
+  let maxIterations = 365; // Safety limit to prevent infinite loops
+  let iterations = 0;
 
-        const proposedEndDate = dateUtils.addWorkingDays(
-          candidateDate,
-          Math.ceil(weeksNeeded * 5),
-          planExcludes,
-        );
+  // Check if any allocation has a specific start date
+  // Only consider allocations for engineers that exist in the current plan
+  const allocationsWithDates = project.allocations.filter(
+    a => a.startDate && 
+         new Date(a.startDate).getTime() > 0 && 
+         engineers.some(e => e.id === a.engineerId)
+  );
+  
+  if (allocationsWithDates.length > 0) {
+    // Use the latest start date from allocations
+    const latestAllocationStart = new Date(
+      Math.max(...allocationsWithDates.map(a => new Date(a.startDate).getTime()))
+    );
+    
+    // Only use allocation date if it's after our calculated start
+    if (latestAllocationStart > candidateDate) {
+      candidateDate = latestAllocationStart;
+    }
+  }
 
-        const overlappingAssignments =
-          schedulingUtils.findOverlappingAssignments(
-            assignments,
-            engineer.id,
-            candidateDate,
-            proposedEndDate,
-            planExcludes,
-          );
+  while (iterations < maxIterations) {
+    iterations++;
+    
+    const allEngineersAvailable = project.allocations.every((allocation) => {
+      const engineer = engineers.find((e) => e.id === allocation.engineerId);
+      if (!engineer) return false;
 
-        if (
-          schedulingUtils.hasHigherPriorityConflict(
-            overlappingAssignments,
-            project,
-            sortedProjects,
-          )
-        ) {
-          return false;
-        }
+      const proposedEndDate = dateUtils.addWorkingDays(
+        candidateDate,
+        Math.ceil(weeksNeeded * 5),
+        planExcludes
+      );
 
-        const currentWorkload = schedulingUtils.calculateCurrentWorkload(
+      const overlappingAssignments = memoizedFindOverlappingAssignments(
+        assignments,
+        engineer.id,
+        candidateDate,
+        proposedEndDate,
+        planExcludes
+      );
+
+      if (
+        schedulingUtils.hasHigherPriorityConflict(
           overlappingAssignments,
           project,
-          sortedProjects,
-        );
-
-        return currentWorkload + (allocation.percentage || 100) <= 100;
-      });
-
-      if (allEngineersAvailable) {
-        commonStartDate = new Date(candidateDate);
-        searching = false;
-      } else {
-        do {
-          candidateDate.setDate(candidateDate.getDate() + 1);
-        } while (
-          dateUtils.isWeekend(candidateDate) ||
-          dateUtils.isExcludedDate(candidateDate, planExcludes)
-        );
+          sortedProjects
+        )
+      ) {
+        return false;
       }
+
+      const workloadCacheKey = `${engineer.id}_${candidateDate.toISOString()}`;
+      let currentWorkload;
+      
+      if (calculationCache.workloadCache.has(workloadCacheKey)) {
+        currentWorkload = calculationCache.workloadCache.get(workloadCacheKey);
+      } else {
+        currentWorkload = schedulingUtils.calculateCurrentWorkload(
+          overlappingAssignments,
+          project,
+          sortedProjects
+        );
+        calculationCache.workloadCache.set(workloadCacheKey, currentWorkload);
+      }
+
+      return currentWorkload + (allocation.percentage || 100) <= 100;
+    });
+
+    if (allEngineersAvailable) {
+      return candidateDate;
     }
 
-    // Calculate weeks between base date and common start date
-    const latestStartWeek = Math.ceil(
-      (commonStartDate - baseDate) / (7 * 24 * 60 * 60 * 1000),
+    // Move to next working day
+    do {
+      candidateDate.setDate(candidateDate.getDate() + 1);
+    } while (
+      dateUtils.isWeekend(candidateDate) ||
+      dateUtils.isExcludedDate(candidateDate, planExcludes)
     );
+  }
 
-    // Add an assignment for each allocation using the common start date
-    project.allocations.forEach((allocation) => {
-      const engineer = engineers.find((e) => e.id === allocation.engineerId);
-      if (!engineer) return;
+  // If we reach here, we couldn't find a suitable date within the iteration limit
+  // Return the plan's base date as a fallback to avoid scheduling far in the future
+  logger.warn(`Could not find suitable start date for project within ${maxIterations} iterations. Using plan base date.`);
+  return baseDate;
+}
 
-      // Use the common start date for all engineers
-      const startDate = commonStartDate;
+// Create assignments for a project
+function createAssignments(project, engineers, commonStartDate, baseDate, weeksNeeded, planExcludes) {
+  const newAssignments = [];
+  const latestStartWeek = Math.ceil(
+    (commonStartDate - baseDate) / (7 * 24 * 60 * 60 * 1000)
+  );
 
-      assignments.push({
-        projectId: project.id,
-        projectName: project.name,
-        engineerId: engineer.id,
-        startWeek: latestStartWeek,
-        weeksNeeded,
-        percentage: allocation.percentage || 100,
-        startDate: dateUtils.normalize(startDate),
-      });
+  for (const allocation of project.allocations) {
+    const engineer = engineers.find((e) => e.id === allocation.engineerId);
+    if (!engineer) continue;
+
+    newAssignments.push({
+      projectId: project.id,
+      projectName: project.name,
+      engineerId: engineer.id,
+      startWeek: latestStartWeek,
+      weeksNeeded,
+      percentage: allocation.percentage || 100,
+      startDate: dateUtils.normalize(commonStartDate),
     });
   }
 
-  // Convert assignments to scheduled projects format
-  const scheduledProjects = projects.map((project) => {
+  return newAssignments;
+}
+
+// Convert assignments to scheduled projects
+function createScheduledProjects(projects, assignments, planExcludes) {
+  return projects.map((project) => {
     const projectAssignments = assignments.filter(
-      (a) => a.projectId === project.id,
+      (a) => a.projectId === project.id
     );
+    
     if (projectAssignments.length === 0) return project;
 
-    const startDate = new Date(
-      Math.min(...projectAssignments.map((a) => a.startDate)),
-    );
-    const endDate = new Date(
-      Math.max(
-        ...projectAssignments.map((a) => {
-          return dateUtils.addWorkingDays(
-            new Date(a.startDate),
-            Math.ceil(a.weeksNeeded * 5),
-            planExcludes,
-          );
-        }),
-      ),
-    );
+    // Find the earliest start date among all assignments for this project
+    const startDates = projectAssignments.map(a => new Date(a.startDate));
+    const startDate = new Date(Math.min(...startDates));
+
+    // Calculate the latest end date
+    const endDates = projectAssignments.map(a => {
+      return dateUtils.addWorkingDays(
+        new Date(a.startDate),
+        Math.ceil(a.weeksNeeded * 5),
+        planExcludes
+      );
+    });
+    const endDate = new Date(Math.max(...endDates));
 
     return {
       ...project,
@@ -323,173 +374,189 @@ export function calculateSchedule(projects, engineers, planExcludes = []) {
       assignments: projectAssignments,
     };
   });
+}
 
-  // Calculate resource utilization
-  const calculateResourceUtilization = (
-    scheduledProjects,
-    availableEngineers,
-  ) => {
-    let totalAllocatedHours = 0;
-    let totalAvailableHours = 0;
+// Calculate resource utilization
+function calculateResourceUtilization(scheduledProjects, availableEngineers) {
+  let totalAllocatedHours = 0;
+  let totalAvailableHours = 0;
 
-    // Get the full date range of the plan
-    const projectsWithDates = scheduledProjects.filter(
-      (p) => p.startDate && p.endDate,
-    );
+  // Get projects with valid dates
+  const projectsWithDates = scheduledProjects.filter(
+    (p) => p.startDate && p.endDate
+  );
 
-    if (projectsWithDates.length === 0) {
-      return {
-        allocated: 0,
-        available: 0,
-        percentage: 0,
-      };
+  if (projectsWithDates.length === 0) {
+    return {
+      allocated: 0,
+      available: 0,
+      percentage: 0,
+    };
+  }
+
+  // Find plan date range
+  const startDates = projectsWithDates.map(p => new Date(p.startDate));
+  const endDates = projectsWithDates.map(p => new Date(p.endDate));
+  
+  const planStart = new Date(Math.min(...startDates));
+  const planEnd = new Date(Math.max(...endDates));
+
+  // Ensure we have valid dates
+  if (isNaN(planStart.getTime()) || isNaN(planEnd.getTime())) {
+    return {
+      allocated: 0,
+      available: 0,
+      percentage: 0,
+    };
+  }
+
+  const totalWeeks = Math.max(
+    1,
+    Math.ceil((planEnd - planStart) / (7 * 24 * 60 * 60 * 1000))
+  );
+
+  // Calculate total available capacity
+  for (const engineer of availableEngineers) {
+    const weeklyHours = engineer.weeklyHours || 40;
+    totalAvailableHours += weeklyHours * totalWeeks;
+  }
+
+  // Calculate total allocated hours
+  for (const project of projectsWithDates) {
+    const projectStart = new Date(project.startDate);
+    const projectEnd = new Date(project.endDate);
+
+    if (isNaN(projectStart.getTime()) || isNaN(projectEnd.getTime())) {
+      continue;
     }
 
-    const planStart = new Date(
-      Math.min(
-        ...projectsWithDates.map((project) => new Date(project.startDate)),
-      ),
-    );
-    const planEnd = new Date(
-      Math.max(
-        ...projectsWithDates.map((project) => new Date(project.endDate)),
-      ),
-    );
-
-    // Ensure we have valid dates
-    if (isNaN(planStart.getTime()) || isNaN(planEnd.getTime())) {
-      console.warn("Invalid date range detected in resource calculation");
-      return {
-        allocated: 0,
-        available: 0,
-        percentage: 0,
-      };
-    }
-
-    const totalWeeks = Math.max(
+    const projectWeeks = Math.max(
       1,
-      Math.ceil((planEnd - planStart) / (7 * 24 * 60 * 60 * 1000)),
+      Math.ceil((projectEnd - projectStart) / (7 * 24 * 60 * 60 * 1000))
     );
 
-    // Calculate total available capacity
-    availableEngineers.forEach((engineer) => {
-      const weeklyHours = engineer.weeklyHours || 40; // Using weeklyHours instead of hoursPerWeek
-      totalAvailableHours += weeklyHours * totalWeeks;
-    });
-
-    // Calculate total allocated hours
-    projectsWithDates.forEach((project) => {
-      const projectStart = new Date(project.startDate);
-      const projectEnd = new Date(project.endDate);
-
-      if (isNaN(projectStart.getTime()) || isNaN(projectEnd.getTime())) {
-        console.warn(`Invalid dates for project ${project.id}`);
-        return;
-      }
-
-      const projectWeeks = Math.max(
-        1,
-        Math.ceil((projectEnd - projectStart) / (7 * 24 * 60 * 60 * 1000)),
-      );
-
-      project.assignments?.forEach((assignment) => {
+    if (project.assignments) {
+      for (const assignment of project.assignments) {
         const engineer = availableEngineers.find(
-          (e) => e.id === assignment.engineerId,
+          (e) => e.id === assignment.engineerId
         );
-        if (!engineer) return;
+        if (!engineer) continue;
 
         const percentage = Number(assignment.percentage) || 0;
         const weeklyHours = engineer.weeklyHours || 40;
         const assignedHours = ((weeklyHours * percentage) / 100) * projectWeeks;
         totalAllocatedHours += assignedHours;
-      });
-    });
+      }
+    }
+  }
 
-    // Ensure we don't return negative or NaN values
-    totalAllocatedHours = Math.max(0, totalAllocatedHours);
-    totalAvailableHours = Math.max(0, totalAvailableHours);
+  // Ensure we don't return negative or NaN values
+  totalAllocatedHours = Math.max(0, totalAllocatedHours);
+  totalAvailableHours = Math.max(0, totalAvailableHours);
 
-    return {
-      allocated: Math.round(totalAllocatedHours * 10) / 10,
-      available: Math.round(totalAvailableHours * 10) / 10,
-      percentage:
-        totalAvailableHours > 0
-          ? Math.round((totalAllocatedHours / totalAvailableHours) * 1000) / 10
-          : 0,
-    };
+  return {
+    allocated: Math.round(totalAllocatedHours * 10) / 10,
+    available: Math.round(totalAvailableHours * 10) / 10,
+    percentage:
+      totalAvailableHours > 0
+        ? Math.round((totalAllocatedHours / totalAvailableHours) * 1000) / 10
+        : 0,
   };
-  // Calculate resource utilization
-  // const calculateResourceUtilization = (
-  //   scheduledProjects,
-  //   availableEngineers,
-  // ) => {
-  //   let totalAllocatedHours = 0;
-  //   let totalAvailableHours = 0;
-  //
-  //   // Get the full date range of the plan
-  //   const allDates = scheduledProjects
-  //     .filter((p) => p.startDate && p.endDate)
-  //     .flatMap((project) => [
-  //       new Date(project.startDate),
-  //       new Date(project.endDate),
-  //     ]);
-  //
-  //   if (allDates.length === 0) {
-  //     return {
-  //       allocated: 0,
-  //       available: 0,
-  //       percentage: 0,
-  //     };
-  //   }
-  //
-  //   const planStart = new Date(Math.min(...allDates));
-  //   const planEnd = new Date(Math.max(...allDates));
-  //   const totalWeeks = Math.ceil(
-  //     (planEnd - planStart) / (7 * 24 * 60 * 60 * 1000),
-  //   );
-  //
-  //   // Calculate total available capacity
-  //   availableEngineers.forEach((engineer) => {
-  //     const weeklyHours = engineer.hoursPerWeek || 40;
-  //     totalAvailableHours += weeklyHours * totalWeeks;
-  //   });
-  //
-  //   // Calculate total allocated hours
-  //   scheduledProjects.forEach((project) => {
-  //     if (!project.startDate || !project.endDate) return;
-  //
-  //     const projectStart = new Date(project.startDate);
-  //     const projectEnd = new Date(project.endDate);
-  //     const projectWeeks = Math.ceil(
-  //       (projectEnd - projectStart) / (7 * 24 * 60 * 60 * 1000),
-  //     );
-  //
-  //     project.assignments?.forEach((assignment) => {
-  //       const percentage = Number(assignment.percentage) || 0;
-  //       const weeklyHours = Number(project.hoursPerWeek) || 40;
-  //       const assignedHours = ((weeklyHours * percentage) / 100) * projectWeeks;
-  //       totalAllocatedHours += assignedHours;
-  //     });
-  //   });
-  //
-  //   return {
-  //     allocated: Math.round(totalAllocatedHours * 10) / 10,
-  //     available: Math.round(totalAvailableHours * 10) / 10,
-  //     percentage:
-  //       totalAvailableHours > 0
-  //         ? Math.round((totalAllocatedHours / totalAvailableHours) * 1000) / 10
-  //         : 0,
-  //   };
-  // };
+}
 
-  const resourceUtilization = calculateResourceUtilization(
-    scheduledProjects,
-    engineers,
+// Main schedule calculation function
+export function calculateSchedule(projects, engineers, planExcludes = []) {
+  // Early return for empty inputs
+  if (!projects?.length || !engineers?.length) {
+    return {
+      assignments: [],
+      scheduledProjects: [],
+      resourceUtilization: {
+        allocated: 0,
+        available: 0,
+        percentage: 0,
+      },
+    };
+  }
+
+  // Clear calculation cache
+  clearCalculationCache();
+  
+  // Initialize assignments array
+  const assignments = [];
+  
+  // Find base date and sort projects
+  const baseDate = findBaseDate(projects);
+  const sortedProjects = sortProjects(projects, baseDate);
+
+  // Process each project
+  for (const project of sortedProjects) {
+    // Skip projects without allocations or hours
+    if (!project.allocations?.length || !project.estimatedHours) {
+      continue;
+    }
+    
+    // Filter out allocations for engineers that don't exist in the current plan
+    const validAllocations = project.allocations.filter(
+      allocation => engineers.some(engineer => engineer.id === allocation.engineerId)
+    );
+    
+    // Skip if no valid allocations remain
+    if (validAllocations.length === 0) {
+      logger.warn(`Project ${project.name} has no valid allocations for the current plan`);
+      continue;
+    }
+    
+    // Create a copy of the project with only valid allocations
+    const projectWithValidAllocations = {
+      ...project,
+      allocations: validAllocations
+    };
+
+    // Calculate project duration
+    const weeksNeeded = memoizedCalculateProjectDuration(
+      projectWithValidAllocations,
+      engineers,
+      planExcludes
+    );
+
+    // Find a common start date for all engineers
+    const commonStartDate = findCommonStartDate(
+      projectWithValidAllocations,
+      engineers,
+      assignments,
+      baseDate,
+      weeksNeeded,
+      planExcludes,
+      sortedProjects
+    );
+
+    // Create assignments for this project
+    const projectAssignments = createAssignments(
+      projectWithValidAllocations,
+      engineers,
+      commonStartDate,
+      baseDate,
+      weeksNeeded,
+      planExcludes
+    );
+
+    // Add to the assignments array
+    assignments.push(...projectAssignments);
+  }
+
+  // Convert assignments to scheduled projects
+  const scheduledProjects = createScheduledProjects(
+    projects,
+    assignments,
+    planExcludes
   );
 
-  console.log("Assignments:", assignments);
-  console.log("Scheduled Projects:", scheduledProjects);
-  console.log("Resource Utilization:", resourceUtilization);
+  // Calculate resource utilization
+  const resourceUtilization = calculateResourceUtilization(
+    scheduledProjects,
+    engineers
+  );
 
   return {
     assignments,
