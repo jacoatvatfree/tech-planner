@@ -220,26 +220,6 @@ function findEarliestStartDate(project, engineers, assignments, baseDate, weeksN
     earliestPossibleStart.setDate(earliestPossibleStart.getDate() + 1);
   }
 
-  // Check if any allocation has a specific start date
-  // Only consider allocations for engineers that exist in the current plan
-  const allocationsWithDates = project.allocations.filter(
-    a => a.startDate && 
-         new Date(a.startDate).getTime() > 0 && 
-         new Date(a.startDate).getFullYear() !== 1970 &&
-         engineers.some(e => e.id === a.engineerId)
-  );
-  
-  if (allocationsWithDates.length > 0) {
-    // Use the latest start date from allocations
-    const latestAllocationStart = new Date(
-      Math.max(...allocationsWithDates.map(a => new Date(a.startDate).getTime()))
-    );
-    
-    // Only use allocation date if it's after our calculated start
-    if (latestAllocationStart > earliestPossibleStart) {
-      earliestPossibleStart = latestAllocationStart;
-    }
-  }
 
   // Now find the earliest date where all engineers have enough capacity
   let candidateDate = new Date(earliestPossibleStart);
