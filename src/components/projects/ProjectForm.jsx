@@ -37,7 +37,7 @@ export default function ProjectForm({
           ),
           endBefore: "",
           priority: 999,
-          allocations: [],
+          teamMemberIds: [],
           percentComplete: 0,
         },
   );
@@ -64,11 +64,7 @@ export default function ProjectForm({
         percentComplete: Number(formData.percentComplete),
       }),
       description: formData.description,
-      allocations: formData.allocations.map((allocation) => ({
-        ...allocation,
-        startDate: new Date(allocation.startDate),
-        endDate: new Date(allocation.endDate),
-      })),
+      teamMemberIds: formData.teamMemberIds || [],
       planId: editingProject?.planId,
     };
 
@@ -85,7 +81,7 @@ export default function ProjectForm({
       startAfter: format(new Date(), "yyyy-MM-dd"),
       endBefore: "",
       priority: 3,
-      allocations: [],
+      teamMemberIds: [],
     });
     onCancel();
   };
@@ -239,43 +235,11 @@ export default function ProjectForm({
       </div>
 
       <TeamMemberSelect
-        selectedTeamMembers={formData.allocations.map((a) => a.engineerId)}
+        selectedTeamMembers={formData.teamMemberIds || []}
         onTeamMemberSelect={(selectedTeamMembers) => {
-          const startDate = formData.startAfter
-            ? new Date(formData.startAfter)
-            : new Date();
-          const endDate = formData.endBefore
-            ? new Date(formData.endBefore)
-            : new Date(
-                startDate.getTime() + formData.estimatedHours * 60 * 60 * 1000,
-              );
-
-          // Preserve existing allocations that are still selected
-          const existingAllocations = formData.allocations.filter(
-            (allocation) => selectedTeamMembers.includes(allocation.engineerId),
-          );
-
-          // Add new allocations for newly selected team members
-          const newTeamMemberIds = selectedTeamMembers.filter(
-            (engineerId) =>
-              !formData.allocations.some(
-                (allocation) => allocation.engineerId === engineerId,
-              ),
-          );
-
-          const newAllocations = [
-            ...existingAllocations,
-            ...newTeamMemberIds.map((engineerId) => ({
-              engineerId, // Keep engineerId for backward compatibility
-              startDate,
-              endDate,
-              percentage: 100,
-            })),
-          ];
-
           setFormData({
             ...formData,
-            allocations: newAllocations,
+            teamMemberIds: selectedTeamMembers,
           });
         }}
       />

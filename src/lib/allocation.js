@@ -1,49 +1,46 @@
 /**
- * Calculate available hours for a team member in a given date range
+ * Check if a team member is available for a project in a given date range
+ * @param {string} teamMemberId - The ID of the team member
+ * @param {Date} startDate - The start date to check
+ * @param {Date} endDate - The end date to check
+ * @param {Array} assignments - Current assignments
+ * @returns {boolean} - Whether the team member is available
  */
-export const calculateAvailableHours = (teamMember, startDate, endDate) => {
-  const overlappingAllocations = teamMember.allocations.filter(allocation => {
-    const allocationStart = new Date(allocation.startDate);
-    const allocationEnd = new Date(allocation.endDate);
-    return allocationStart <= endDate && allocationEnd >= startDate;
+export const isTeamMemberAvailable = (teamMemberId, startDate, endDate, assignments) => {
+  // Check if the team member has any overlapping assignments
+  const overlappingAssignments = assignments.filter(assignment => {
+    if (assignment.engineerId !== teamMemberId) return false;
+    
+    const assignmentStart = new Date(assignment.startDate);
+    const assignmentEnd = new Date(assignment.endDate);
+    
+    // Check for overlap
+    return !(endDate <= assignmentStart || startDate >= assignmentEnd);
   });
-
-  const totalAllocatedPercentage = overlappingAllocations.reduce(
-    (sum, allocation) => sum + allocation.percentage,
-    0
-  );
-
-  const availablePercentage = Math.max(0, 100 - totalAllocatedPercentage);
-  return (teamMember.weeklyHours * availablePercentage) / 100;
+  
+  // If there are any overlapping assignments, the team member is not available
+  return overlappingAssignments.length === 0;
 };
 
 /**
- * Create a new allocation
+ * Calculate project duration in weeks based on team members and estimated hours
+ * @param {Object} project - The project
+ * @param {Array} teamMembers - Array of team members assigned to the project
+ * @returns {number} - Duration in weeks
  */
-export const createAllocation = ({
-  projectId,
-  engineerId,
-  startDate,
-  endDate,
-  percentage
-}) => ({
-  projectId,
-  engineerId,
-  startDate: new Date(startDate),
-  endDate: new Date(endDate),
-  percentage
-});
-
-/**
- * Check if an allocation is valid
- */
-export const isAllocationValid = (allocation, teamMember, project) => {
-  const availableHours = calculateAvailableHours(
-    teamMember,
-    allocation.startDate,
-    allocation.endDate
-  );
+export const calculateProjectDuration = (project, teamMembers) => {
+  // Calculate total hours per day across all team members (at 100%)
+  const hoursPerDay = teamMembers.reduce((sum, teamMember) => {
+    const dailyHours = (teamMember.weeklyHours || 40) / 5;
+    return sum + dailyHours;
+  }, 0);
   
-  const requiredHours = (project.estimatedHours * allocation.percentage) / 100;
-  return availableHours >= requiredHours;
+  // If no team members or hours per day is 0, return 0
+  if (hoursPerDay === 0) return 0;
+  
+  // Calculate days needed
+  const daysNeeded = project.estimatedHours / hoursPerDay;
+  
+  // Convert to weeks (5 working days per week)
+  return daysNeeded / 5;
 };

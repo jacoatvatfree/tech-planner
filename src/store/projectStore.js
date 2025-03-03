@@ -6,7 +6,39 @@ const STORAGE_KEY = "projects_data";
 
 const getInitialState = (planId) => {
   const storedData = localStorage.getItem(`${STORAGE_KEY}_${planId}`);
-  return storedData ? JSON.parse(storedData) : [];
+  
+  if (!storedData) return [];
+  
+  // Parse the stored data
+  const projects = JSON.parse(storedData);
+  
+  // Convert allocations to teamMemberIds for each project
+  return projects.map(project => {
+    // If the project already has teamMemberIds, return it as is
+    if (project.teamMemberIds?.length) {
+      return project;
+    }
+    
+    // If the project has allocations, convert them to teamMemberIds
+    if (project.allocations?.length) {
+      // Extract unique engineerIds from allocations
+      const teamMemberIds = [...new Set(
+        project.allocations.map(allocation => allocation.engineerId)
+      )];
+      
+      // Return a new project object with teamMemberIds
+      return {
+        ...project,
+        teamMemberIds
+      };
+    }
+    
+    // If the project has neither, return it with an empty teamMemberIds array
+    return {
+      ...project,
+      teamMemberIds: []
+    };
+  });
 };
 
 const useProjectStore = create((set, get) => ({
@@ -41,8 +73,30 @@ const useProjectStore = create((set, get) => ({
         return state;
       }
       
+      // Convert allocations to teamMemberIds if needed
+      let projectWithTeamMemberIds = project;
+      
+      if (!project.teamMemberIds && project.allocations?.length) {
+        // Extract unique engineerIds from allocations
+        const teamMemberIds = [...new Set(
+          project.allocations.map(allocation => allocation.engineerId)
+        )];
+        
+        // Create a new project with teamMemberIds
+        projectWithTeamMemberIds = {
+          ...project,
+          teamMemberIds
+        };
+      } else if (!project.teamMemberIds) {
+        // Ensure project has teamMemberIds array even if empty
+        projectWithTeamMemberIds = {
+          ...project,
+          teamMemberIds: []
+        };
+      }
+      
       const newState = {
-        projects: [...state.projects, project],
+        projects: [...state.projects, projectWithTeamMemberIds],
       };
       localStorage.setItem(
         `${STORAGE_KEY}_${planId}`,
@@ -62,9 +116,31 @@ const useProjectStore = create((set, get) => ({
         return state;
       }
       
+      // Convert allocations to teamMemberIds if needed
+      let projectWithTeamMemberIds = updatedProject;
+      
+      if (!updatedProject.teamMemberIds && updatedProject.allocations?.length) {
+        // Extract unique engineerIds from allocations
+        const teamMemberIds = [...new Set(
+          updatedProject.allocations.map(allocation => allocation.engineerId)
+        )];
+        
+        // Create a new project with teamMemberIds
+        projectWithTeamMemberIds = {
+          ...updatedProject,
+          teamMemberIds
+        };
+      } else if (!updatedProject.teamMemberIds) {
+        // Ensure project has teamMemberIds array even if empty
+        projectWithTeamMemberIds = {
+          ...updatedProject,
+          teamMemberIds: []
+        };
+      }
+      
       const newState = {
         projects: state.projects.map((project) =>
-          project.id === updatedProject.id ? updatedProject : project,
+          project.id === updatedProject.id ? projectWithTeamMemberIds : project,
         ),
       };
       localStorage.setItem(

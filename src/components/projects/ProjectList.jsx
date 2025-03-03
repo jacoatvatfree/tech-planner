@@ -17,12 +17,12 @@ export default function ProjectList({ onEdit }) {
     }
   };
 
-  const handleUpdateAllocations = (projectId, allocations) => {
+  const handleUpdateAllocations = (projectId, teamMemberIds) => {
     const project = projects.find((p) => p.id === projectId);
     if (project) {
       updateProject({
         ...project,
-        allocations,
+        teamMemberIds,
       });
     }
   };

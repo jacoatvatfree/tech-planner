@@ -81,9 +81,10 @@ export default function ProjectListItem({
             </div>
             <div className="space-y-2">
               {team.map((teamMember) => {
-                const isAllocated = project.allocations?.some(
-                  (a) => a.engineerId === teamMember.id,
-                );
+                const isAssigned = project.teamMemberIds?.includes(teamMember.id) || 
+                  // For backward compatibility with old format
+                  project.allocations?.some(a => a.engineerId === teamMember.id);
+                
                 return (
                   <div
                     key={teamMember.id}
@@ -92,18 +93,22 @@ export default function ProjectListItem({
                     <input
                       type="checkbox"
                       id={`team-member-${teamMember.id}-${project.id}`}
-                      checked={isAllocated}
+                      checked={isAssigned}
                       onChange={(e) => {
+                        // Get current team member IDs (from either format)
+                        const currentTeamMemberIds = project.teamMemberIds || 
+                          (project.allocations?.map(a => a.engineerId) || []);
+                        
                         if (e.target.checked) {
+                          // Add team member
                           onUpdateAllocations([
-                            ...(project.allocations || []),
-                            { engineerId: teamMember.id, percentage: 100 },
+                            ...currentTeamMemberIds.filter(id => id !== teamMember.id),
+                            teamMember.id
                           ]);
                         } else {
+                          // Remove team member
                           onUpdateAllocations(
-                            (project.allocations || []).filter(
-                              (a) => a.engineerId !== teamMember.id,
-                            ),
+                            currentTeamMemberIds.filter(id => id !== teamMember.id)
                           );
                         }
                       }}

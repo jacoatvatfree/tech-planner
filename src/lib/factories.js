@@ -3,11 +3,10 @@ import { v4 as uuidv4 } from "uuid";
 /**
  * Create a new team member
  */
-export const makeTeamMember = ({ name, weeklyHours = 40, allocations = [] }) => ({
+export const makeTeamMember = ({ name, weeklyHours = 40 }) => ({
   id: uuidv4(),
   name,
   weeklyHours,
-  allocations,
 });
 
 /**
@@ -25,7 +24,8 @@ export const makeProject = ({
   startAfter = null,
   endBefore = null,
   priority = 3,
-  allocations = [],
+  teamMemberIds = [],
+  allocations = [], // Keep for backward compatibility
   percentComplete = 0,
 }) => ({
   id: uuidv4(),
@@ -35,7 +35,8 @@ export const makeProject = ({
   startAfter,
   endBefore,
   priority,
-  allocations,
+  teamMemberIds,
+  allocations, // Keep for backward compatibility
   percentComplete,
 });
 

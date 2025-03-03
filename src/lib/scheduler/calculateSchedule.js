@@ -1,5 +1,6 @@
 import { dateUtils } from "./dateUtils";
 import logger from "../../utils/logger";
+import { calculateProjectDuration } from "../../lib/allocation";
 
 // Project scheduling helper functions
 const schedulingUtils = {
@@ -35,34 +36,6 @@ const schedulingUtils = {
       currentDate.setDate(currentDate.getDate() + 1);
     }
     return days;
-  },
-  calculateProjectDuration: (project, engineers, excludes) => {
-    // Calculate total hours per day across all allocations
-    const hoursPerDay = project.allocations.reduce((sum, allocation) => {
-      const engineer = engineers.find((e) => e.id === allocation.engineerId);
-      if (!engineer) return sum;
-      const percentage = allocation.percentage || 100;
-      const engineerDailyHours = (engineer.weeklyHours || 40) / 5;
-      return sum + engineerDailyHours * (percentage / 100);
-    }, 0);
-
-    // Calculate days needed by dividing total project hours by combined daily hours
-    let remainingHours = project.estimatedHours;
-    let workDays = 0;
-    let currentDate = new Date();
-
-    while (remainingHours > 0) {
-      if (
-        !dateUtils.isWeekend(currentDate) &&
-        !dateUtils.isExcludedDate(currentDate, excludes)
-      ) {
-        remainingHours -= hoursPerDay;
-        workDays++;
-      }
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    return workDays / 5; // Convert to weeks
   },
 
   findOverlappingAssignments: (
@@ -137,14 +110,19 @@ export function clearCalculationCache() {
 }
 
 // Memoized version of calculateProjectDuration
-function memoizedCalculateProjectDuration(project, engineers, excludes) {
-  const cacheKey = `${project.id}_${project.estimatedHours}_${JSON.stringify(project.allocations)}`;
+function memoizedCalculateProjectDuration(project, engineers) {
+  const cacheKey = `${project.id}_${project.estimatedHours}_${JSON.stringify(project.teamMemberIds)}`;
   
   if (calculationCache.projectDuration.has(cacheKey)) {
     return calculationCache.projectDuration.get(cacheKey);
   }
   
-  const result = schedulingUtils.calculateProjectDuration(project, engineers, excludes);
+  // Get the team members assigned to this project
+  const teamMembers = engineers.filter(engineer => 
+    project.teamMemberIds && project.teamMemberIds.includes(engineer.id)
+  );
+  
+  const result = calculateProjectDuration(project, teamMembers);
   calculationCache.projectDuration.set(cacheKey, result);
   return result;
 }
@@ -197,7 +175,7 @@ function sortProjects(projects, baseDate) {
   });
 }
 
-// Find the earliest possible start date for a project where all engineers have capacity
+// Find the earliest possible start date for a project where all team members have capacity
 function findEarliestStartDate(project, engineers, assignments, baseDate, weeksNeeded, planExcludes, sortedProjects, engineerAvailability) {
   // Use project's startAfter date if specified and valid (not 1970-01-01), otherwise use the plan's base date
   const projectStartAfter = project.startAfter ? new Date(project.startAfter) : null;
@@ -220,8 +198,7 @@ function findEarliestStartDate(project, engineers, assignments, baseDate, weeksN
     earliestPossibleStart.setDate(earliestPossibleStart.getDate() + 1);
   }
 
-
-  // Now find the earliest date where all engineers have enough capacity
+  // Now find the earliest date where all team members have enough capacity
   let candidateDate = new Date(earliestPossibleStart);
   let maxIterations = 365; // Safety limit to prevent infinite loops
   let iterations = 0;
@@ -229,9 +206,9 @@ function findEarliestStartDate(project, engineers, assignments, baseDate, weeksN
   while (iterations < maxIterations) {
     iterations++;
     
-    // Check if all engineers are available at this date
-    const allEngineersAvailable = project.allocations.every((allocation) => {
-      const engineer = engineers.find((e) => e.id === allocation.engineerId);
+    // Check if all team members are available at this date
+    const allTeamMembersAvailable = project.teamMemberIds.every((teamMemberId) => {
+      const engineer = engineers.find((e) => e.id === teamMemberId);
       if (!engineer) return false;
 
       const proposedEndDate = dateUtils.addWorkingDays(
@@ -271,7 +248,7 @@ function findEarliestStartDate(project, engineers, assignments, baseDate, weeksN
       return true;
     });
 
-    if (allEngineersAvailable) {
+    if (allTeamMembersAvailable) {
       return candidateDate;
     }
 
@@ -297,8 +274,9 @@ function createAssignments(project, engineers, commonStartDate, baseDate, weeksN
     (commonStartDate - baseDate) / (7 * 24 * 60 * 60 * 1000)
   );
 
-  for (const allocation of project.allocations) {
-    const engineer = engineers.find((e) => e.id === allocation.engineerId);
+  // For each team member assigned to the project
+  for (const teamMemberId of project.teamMemberIds) {
+    const engineer = engineers.find((e) => e.id === teamMemberId);
     if (!engineer) continue;
 
     newAssignments.push({
@@ -307,7 +285,7 @@ function createAssignments(project, engineers, commonStartDate, baseDate, weeksN
       engineerId: engineer.id,
       startWeek: latestStartWeek,
       weeksNeeded,
-      percentage: allocation.percentage || 100,
+      percentage: 100, // Always 100% since team members are fully allocated to one project at a time
       startDate: dateUtils.normalize(commonStartDate),
     });
   }
@@ -468,38 +446,49 @@ export function calculateSchedule(projects, engineers, planExcludes = [], planSt
   
   // Process each project in priority order
   for (const project of sortedProjects) {
-    // Skip projects without allocations or hours
-    if (!project.allocations?.length || !project.estimatedHours) {
+    // Handle both old format (allocations) and new format (teamMemberIds)
+    let teamMemberIds = [];
+    
+    // If project has teamMemberIds, use those
+    if (project.teamMemberIds?.length) {
+      teamMemberIds = project.teamMemberIds;
+    } 
+    // If project has allocations (old format), extract engineerIds from allocations
+    else if (project.allocations?.length) {
+      teamMemberIds = project.allocations.map(allocation => allocation.engineerId);
+    }
+    
+    // Skip projects without team members or hours
+    if (!teamMemberIds.length || !project.estimatedHours) {
       continue;
     }
     
-    // Filter out allocations for engineers that don't exist in the current plan
-    const validAllocations = project.allocations.filter(
-      allocation => engineers.some(engineer => engineer.id === allocation.engineerId)
+    // Filter out team members that don't exist in the current plan
+    const validTeamMemberIds = teamMemberIds.filter(
+      teamMemberId => engineers.some(engineer => engineer.id === teamMemberId)
     );
     
-    // Skip if no valid allocations remain
-    if (validAllocations.length === 0) {
-      logger.warn(`Project ${project.name} has no valid allocations for the current plan`);
+    // Skip if no valid team members remain
+    if (validTeamMemberIds.length === 0) {
+      logger.warn(`Project ${project.name} has no valid team members for the current plan`);
       continue;
     }
     
-    // Create a copy of the project with only valid allocations
-    const projectWithValidAllocations = {
+    // Create a copy of the project with only valid team members
+    const projectWithValidTeamMembers = {
       ...project,
-      allocations: validAllocations
+      teamMemberIds: validTeamMemberIds
     };
 
     // Calculate project duration
     const weeksNeeded = memoizedCalculateProjectDuration(
-      projectWithValidAllocations,
-      engineers,
-      planExcludes
+      projectWithValidTeamMembers,
+      engineers
     );
 
     // Find the earliest possible start date
     const earliestStartDate = findEarliestStartDate(
-      projectWithValidAllocations,
+      projectWithValidTeamMembers,
       engineers,
       assignments,
       baseDate,
@@ -511,7 +500,7 @@ export function calculateSchedule(projects, engineers, planExcludes = [], planSt
 
     // Create assignments for this project
     const projectAssignments = createAssignments(
-      projectWithValidAllocations,
+      projectWithValidTeamMembers,
       engineers,
       earliestStartDate,
       baseDate,

@@ -4,7 +4,6 @@
      * @property {string} id
      * @property {string} name
      * @property {number} weeklyHours
-     * @property {Array<Allocation>} allocations
      */
 
     /**
@@ -13,16 +12,6 @@
      * @property {string} id
      * @property {string} name
      * @property {number} weeklyHours
-     * @property {Array<Allocation>} allocations
-     */
-
-    /**
-     * @typedef {Object} Allocation
-     * @property {string} projectId
-     * @property {string} engineerId
-     * @property {Date} startDate
-     * @property {Date} endDate
-     * @property {number} percentage
      */
 
     /**
@@ -33,7 +22,7 @@
      * @property {Date} [startAfter]
      * @property {Date} [endBefore]
      * @property {number} priority
-     * @property {Array<Allocation>} allocations
+     * @property {Array<string>} teamMemberIds
      */
 
     /**
