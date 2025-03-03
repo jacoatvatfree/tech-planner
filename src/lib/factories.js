@@ -1,14 +1,19 @@
 import { v4 as uuidv4 } from "uuid";
 
 /**
- * Create a new engineer
+ * Create a new team member
  */
-export const makeEngineer = ({ name, weeklyHours = 40, allocations = [] }) => ({
+export const makeTeamMember = ({ name, weeklyHours = 40, allocations = [] }) => ({
   id: uuidv4(),
   name,
   weeklyHours,
   allocations,
 });
+
+/**
+ * Alias for backward compatibility
+ */
+export const makeEngineer = makeTeamMember;
 
 /**
  * Create a new project
@@ -39,13 +44,13 @@ export const makeProject = ({
  */
 export const makeAllocation = ({
   projectId,
-  engineerId,
+  engineerId, // Keep engineerId for backward compatibility
   startDate,
   endDate,
   percentage = 100,
 }) => ({
   projectId,
-  engineerId,
+  engineerId, // This remains engineerId for backward compatibility with existing data
   startDate: new Date(startDate),
   endDate: new Date(endDate),
   percentage,
@@ -58,12 +63,12 @@ export const makeSchedule = ({
   startDate,
   endDate,
   projects = [],
-  engineers = [],
+  engineers = [], // Keep engineers for backward compatibility
 }) => ({
   startDate: new Date(startDate),
   endDate: new Date(endDate),
   projects,
-  engineers,
+  engineers, // This remains engineers for backward compatibility with existing data
 });
 
 /**

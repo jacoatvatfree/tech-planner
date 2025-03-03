@@ -2,96 +2,107 @@ import { create } from "zustand";
 import logger from "../utils/logger";
 import { clearAllCaches } from "../lib/scheduler";
 
-const STORAGE_KEY = "engineers_data";
+const STORAGE_KEY = "engineers_data"; // Keep for backward compatibility
 
 const getInitialState = (planId) => {
   const storedData = localStorage.getItem(`${STORAGE_KEY}_${planId}`);
   return storedData ? JSON.parse(storedData) : [];
 };
 
-const useEngineerStore = create((set, get) => ({
-  engineers: [],
+const useTeamStore = create((set, get) => ({
+  team: [],
   currentPlanId: null, // Store the current plan ID locally
   setCurrentPlanId: (planId) => set({ currentPlanId: planId }),
-  initializeEngineers: (planId) => {
-    set({ engineers: getInitialState(planId), currentPlanId: planId });
+  initializeTeam: (planId) => {
+    set({ team: getInitialState(planId), currentPlanId: planId });
   },
-  addEngineer: (engineer) =>
+  addTeamMember: (teamMember) =>
     set((state) => {
       const planId = state.currentPlanId;
       if (!planId) {
-        logger.error("Cannot add engineer: No plan selected");
+        logger.error("Cannot add team member: No plan selected");
         return state;
       }
       const newState = {
-        engineers: [...state.engineers, { ...engineer, planId }],
+        team: [...state.team, { ...teamMember, planId }],
       };
       localStorage.setItem(
         `${STORAGE_KEY}_${planId}`,
-        JSON.stringify(newState.engineers),
+        JSON.stringify(newState.team),
       );
-      
+
       // Clear caches to ensure schedule is recalculated
       clearAllCaches();
-      
+
       return newState;
     }),
-  updateEngineer: (id, updates) =>
+  updateTeamMember: (id, updates) =>
     set((state) => {
       const planId = state.currentPlanId;
       if (!planId) {
-        logger.error("Cannot update engineer: No plan selected");
+        logger.error("Cannot update team member: No plan selected");
         return state;
       }
       const newState = {
-        engineers: state.engineers.map((engineer) =>
-          engineer.id === id ? { ...engineer, ...updates } : engineer,
+        team: state.team.map((teamMember) =>
+          teamMember.id === id ? { ...teamMember, ...updates } : teamMember,
         ),
       };
       localStorage.setItem(
         `${STORAGE_KEY}_${planId}`,
-        JSON.stringify(newState.engineers),
+        JSON.stringify(newState.team),
       );
-      
+
       // Clear caches to ensure schedule is recalculated
       clearAllCaches();
-      
+
       return newState;
     }),
-  removeEngineer: (id) =>
+  removeTeamMember: (id) =>
     set((state) => {
       const planId = state.currentPlanId;
       if (!planId) {
-        logger.error("Cannot remove engineer: No plan selected");
+        logger.error("Cannot remove team member: No plan selected");
         return state;
       }
       const newState = {
-        engineers: state.engineers.filter((engineer) => engineer.id !== id),
+        team: state.team.filter((teamMember) => teamMember.id !== id),
       };
       localStorage.setItem(
         `${STORAGE_KEY}_${planId}`,
-        JSON.stringify(newState.engineers),
+        JSON.stringify(newState.team),
       );
-      
+
       // Clear caches to ensure schedule is recalculated
       clearAllCaches();
-      
+
       return newState;
     }),
-  clearEngineers: () =>
+  clearTeam: () =>
     set((state) => {
       const planId = state.currentPlanId;
       if (!planId) {
-        logger.error("Cannot clear engineers: No plan selected");
+        logger.error("Cannot clear team: No plan selected");
         return state;
       }
       localStorage.removeItem(`${STORAGE_KEY}_${planId}`);
-      
+
       // Clear caches to ensure schedule is recalculated
       clearAllCaches();
-      
-      return { engineers: [] };
+
+      return { team: [] };
     }),
+  // Alias for backward compatibility
+  get engineers() {
+    return get().team;
+  },
+  initializeEngineers: (planId) => get().initializeTeam(planId),
+  addEngineer: (engineer) => get().addTeamMember(engineer),
+  updateEngineer: (id, updates) => get().updateTeamMember(id, updates),
+  removeEngineer: (id) => get().removeTeamMember(id),
+  clearEngineers: () => get().clearTeam(),
 }));
 
-export { useEngineerStore };
+export { useTeamStore };
+// For backward compatibility
+export const useEngineerStore = useTeamStore;

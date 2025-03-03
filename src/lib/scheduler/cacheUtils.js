@@ -4,7 +4,7 @@ import logger from '../../utils/logger';
 
 /**
  * Clears all caches used for scheduling and Gantt chart generation
- * This should be called whenever project or engineer data changes
+ * This should be called whenever project or team member data changes
  */
 export function clearAllCaches() {
   clearCalculationCache();

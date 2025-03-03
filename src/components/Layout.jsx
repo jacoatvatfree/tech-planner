@@ -11,7 +11,7 @@ import { usePlanStore } from "../store/planStore";
 
 const getNavigation = (hasPlan) => [
   { name: "Dashboard", href: "/", icon: HomeIcon, alwaysShow: true },
-  { name: "Team", href: "/engineers", icon: UserGroupIcon, alwaysShow: false },
+  { name: "Team", href: "/team", icon: UserGroupIcon, alwaysShow: false },
   {
     name: "Projects",
     href: "/projects",

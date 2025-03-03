@@ -2,7 +2,7 @@ import React from "react";
 import { format } from "date-fns";
 import { PencilIcon, TrashIcon, Bars3Icon } from "@heroicons/react/24/outline";
 import { useProjectStore } from "../../store/projectStore";
-import { useEngineerStore } from "../../store/engineerStore";
+import { useTeamStore } from "../../store/teamStore";
 
 export default function ProjectListItem({
   project,
@@ -12,7 +12,7 @@ export default function ProjectListItem({
   onUpdateCompletion,
 }) {
   const { removeProject } = useProjectStore();
-  const { engineers } = useEngineerStore();
+  const { team } = useTeamStore();
 
   const handleDragStart = (e) => {
     e.dataTransfer.setData("text/plain", project.id);
@@ -74,35 +74,35 @@ export default function ProjectListItem({
             </div>
           </div>
 
-          {/* Column 3: Engineers */}
+          {/* Column 3: Team Members */}
           <div className="space-y-2">
             <div className="text-xs font-medium text-gray-500 mb-2">
               Team Members
             </div>
             <div className="space-y-2">
-              {engineers.map((engineer) => {
+              {team.map((teamMember) => {
                 const isAllocated = project.allocations?.some(
-                  (a) => a.engineerId === engineer.id,
+                  (a) => a.engineerId === teamMember.id,
                 );
                 return (
                   <div
-                    key={engineer.id}
+                    key={teamMember.id}
                     className="flex items-center space-x-2"
                   >
                     <input
                       type="checkbox"
-                      id={`engineer-${engineer.id}-${project.id}`}
+                      id={`team-member-${teamMember.id}-${project.id}`}
                       checked={isAllocated}
                       onChange={(e) => {
                         if (e.target.checked) {
                           onUpdateAllocations([
                             ...(project.allocations || []),
-                            { engineerId: engineer.id, percentage: 100 },
+                            { engineerId: teamMember.id, percentage: 100 },
                           ]);
                         } else {
                           onUpdateAllocations(
                             (project.allocations || []).filter(
-                              (a) => a.engineerId !== engineer.id,
+                              (a) => a.engineerId !== teamMember.id,
                             ),
                           );
                         }
@@ -110,10 +110,10 @@ export default function ProjectListItem({
                       className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                     />
                     <label
-                      htmlFor={`engineer-${engineer.id}-${project.id}`}
+                      htmlFor={`team-member-${teamMember.id}-${project.id}`}
                       className="text-sm text-gray-700"
                     >
-                      {engineer.name}
+                      {teamMember.name}
                     </label>
                   </div>
                 );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useProjectStore } from "../store/projectStore";
-import { useEngineerStore } from "../store/engineerStore";
+import { useTeamStore } from "../store/teamStore";
 import { usePlanStore } from "../store/planStore";
 import logger from "../utils/logger";
 import { generateGanttMarkup } from "../lib/scheduler/generateGanttMarkup";
@@ -20,9 +20,9 @@ export default function GanttView() {
     setSchedule: state.setSchedule
   }));
   
-  const { engineers, updateEngineer } = useEngineerStore(state => ({
-    engineers: state.engineers,
-    updateEngineer: state.updateEngineer
+  const { team, updateTeamMember } = useTeamStore(state => ({
+    team: state.team,
+    updateTeamMember: state.updateTeamMember
   }));
   
   const [scheduleData, setScheduleData] = useState(null);
@@ -37,22 +37,22 @@ export default function GanttView() {
     [projects, currentPlanId]
   );
 
-  const planEngineers = useMemo(
-    () => engineers.filter((e) => e.planId === currentPlanId),
-    [engineers, currentPlanId]
+  const planTeam = useMemo(
+    () => team.filter((t) => t.planId === currentPlanId),
+    [team, currentPlanId]
   );
 
-  // Separate effect for updating engineer planIds
+  // Separate effect for updating team member planIds
   useEffect(() => {
-    if (currentPlanId && engineers.length > 0) {
-      const engineersToUpdate = engineers.filter(
-        (engineer) => !engineer.planId
+    if (currentPlanId && team.length > 0) {
+      const teamMembersToUpdate = team.filter(
+        (teamMember) => !teamMember.planId
       );
-      engineersToUpdate.forEach((engineer) => {
-        updateEngineer(engineer.id, { ...engineer, planId: currentPlanId });
+      teamMembersToUpdate.forEach((teamMember) => {
+        updateTeamMember(teamMember.id, { ...teamMember, planId: currentPlanId });
       });
     }
-  }, [currentPlanId, engineers, updateEngineer]);
+  }, [currentPlanId, team, updateTeamMember]);
 
   // Wait for currentPlan to be defined
   useEffect(() => {
@@ -71,8 +71,8 @@ export default function GanttView() {
       setIsLoading(true);
       setError(null);
 
-      // Skip calculation if no projects or engineers
-      if (!planProjects?.length || !planEngineers?.length || !currentPlan) {
+      // Skip calculation if no projects or team members
+      if (!planProjects?.length || !planTeam?.length || !currentPlan) {
         setScheduleData(null);
         setMarkup(generateGanttMarkup([], [], [], currentPlan || {}));
         setIsLoading(false);
@@ -81,7 +81,7 @@ export default function GanttView() {
 
       const result = calculateSchedule(
         planProjects,
-        planEngineers,
+        planTeam,
         currentPlan?.excludes || []
       );
 
@@ -101,7 +101,7 @@ export default function GanttView() {
 
       const newMarkup = generateGanttMarkup(
         result?.assignments || [],
-        planEngineers,
+        planTeam,
         planProjects,
         currentPlan,
         viewType
@@ -121,7 +121,7 @@ export default function GanttView() {
   }, [
     currentPlan,
     planProjects,
-    planEngineers,
+    planTeam,
     viewType,
     scheduleData,
     setSchedule

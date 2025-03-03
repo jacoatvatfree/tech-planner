@@ -2,7 +2,7 @@ import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
-import Engineers from "./pages/Engineers";
+import Team from "./pages/Team";
 import Projects from "./pages/Projects";
 import GanttView from "./pages/GanttView";
 import { usePlanStore } from "./store/planStore";
@@ -38,10 +38,10 @@ function App() {
       <Route path="/" element={<Layout />}>
         <Route index element={<Dashboard />} />
         <Route
-          path="engineers"
+          path="team"
           element={
             <ProtectedRoute>
-              <Engineers />
+              <Team />
             </ProtectedRoute>
           }
         />

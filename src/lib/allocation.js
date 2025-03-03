@@ -1,8 +1,8 @@
 /**
- * Calculate available hours for an engineer in a given date range
+ * Calculate available hours for a team member in a given date range
  */
-export const calculateAvailableHours = (engineer, startDate, endDate) => {
-  const overlappingAllocations = engineer.allocations.filter(allocation => {
+export const calculateAvailableHours = (teamMember, startDate, endDate) => {
+  const overlappingAllocations = teamMember.allocations.filter(allocation => {
     const allocationStart = new Date(allocation.startDate);
     const allocationEnd = new Date(allocation.endDate);
     return allocationStart <= endDate && allocationEnd >= startDate;
@@ -14,7 +14,7 @@ export const calculateAvailableHours = (engineer, startDate, endDate) => {
   );
 
   const availablePercentage = Math.max(0, 100 - totalAllocatedPercentage);
-  return (engineer.weeklyHours * availablePercentage) / 100;
+  return (teamMember.weeklyHours * availablePercentage) / 100;
 };
 
 /**
@@ -37,9 +37,9 @@ export const createAllocation = ({
 /**
  * Check if an allocation is valid
  */
-export const isAllocationValid = (allocation, engineer, project) => {
+export const isAllocationValid = (allocation, teamMember, project) => {
   const availableHours = calculateAvailableHours(
-    engineer,
+    teamMember,
     allocation.startDate,
     allocation.endDate
   );

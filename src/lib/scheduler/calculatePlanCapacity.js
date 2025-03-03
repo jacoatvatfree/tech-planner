@@ -1,9 +1,9 @@
-export function calculatePlanCapacity(engineers, scheduleData, plan, projects) {
+export function calculatePlanCapacity(team, scheduleData, plan, projects) {
   // Ensure we have valid arrays to work with
   const assignments = scheduleData?.assignments || [];
   if (
     !Array.isArray(assignments) ||
-    !Array.isArray(engineers) ||
+    !Array.isArray(team) ||
     !plan.startDate ||
     !plan.endDate
   ) {
@@ -34,8 +34,8 @@ export function calculatePlanCapacity(engineers, scheduleData, plan, projects) {
   const workingDays = getWorkingDays(startOfPlan, endOfPlan);
 
   // Calculate total capacity based on working days
-  const totalCapacityHours = engineers.reduce((sum, engineer) => {
-    const dailyHours = (engineer.weeklyHours || 40) / 5; // Convert weekly hours to daily
+  const totalCapacityHours = team.reduce((sum, teamMember) => {
+    const dailyHours = (teamMember.weeklyHours || 40) / 5; // Convert weekly hours to daily
     return sum + dailyHours * workingDays;
   }, 0);
 
@@ -47,8 +47,8 @@ export function calculatePlanCapacity(engineers, scheduleData, plan, projects) {
   );
 
   // Adjust total capacity for holidays
-  const adjustedCapacityHours = engineers.reduce((sum, engineer) => {
-    const dailyHours = (engineer.weeklyHours || 40) / 5;
+  const adjustedCapacityHours = team.reduce((sum, teamMember) => {
+    const dailyHours = (teamMember.weeklyHours || 40) / 5;
     return sum - dailyHours * estimatedHolidays;
   }, totalCapacityHours);
 
@@ -56,32 +56,32 @@ export function calculatePlanCapacity(engineers, scheduleData, plan, projects) {
   const assignedHours = assignments.reduce((sum, assignment) => {
     const startDate = new Date(assignment.startDate);
     if (startDate <= endOfPlan && startDate >= startOfPlan) {
-      const engineer = engineers.find((e) => e.id === assignment.engineerId);
+      const teamMember = team.find((t) => t.id === assignment.engineerId);
       const project = projects.find((p) => p.id === assignment.projectId);
 
-      if (!engineer || !project) return sum;
+      if (!teamMember || !project) return sum;
 
       // Calculate total weekly hours for the project (same as in generateGanttMarkup)
       const projectAssignments = assignments.filter(
         (a) => a.projectId === assignment.projectId,
       );
       const totalWeeklyHours = projectAssignments.reduce((weeklySum, a) => {
-        const eng = engineers.find((e) => e.id === a.engineerId);
-        if (!eng) return weeklySum;
+        const member = team.find((t) => t.id === a.engineerId);
+        if (!member) return weeklySum;
         const percentage = a.percentage || 100;
-        return weeklySum + (eng.weeklyHours || 40) * (percentage / 100);
+        return weeklySum + (member.weeklyHours || 40) * (percentage / 100);
       }, 0);
 
       // Calculate duration in days (same as in generateGanttMarkup)
       const hoursPerDay = totalWeeklyHours / 5;
       const days = Math.max(1, Math.ceil(project.estimatedHours / hoursPerDay));
 
-      // Convert days to hours for this specific engineer's contribution
-      const weeklyHours = engineer.weeklyHours || 40;
+      // Convert days to hours for this specific team member's contribution
+      const weeklyHours = teamMember.weeklyHours || 40;
       const percentage = assignment.percentage || 100;
-      const engineerDailyHours = (weeklyHours / 5) * (percentage / 100);
+      const teamMemberDailyHours = (weeklyHours / 5) * (percentage / 100);
 
-      return sum + engineerDailyHours * days;
+      return sum + teamMemberDailyHours * days;
     }
     return sum;
   }, 0);

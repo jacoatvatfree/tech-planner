@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { usePlanStore } from "../store/planStore";
 import { useProjectStore } from "../store/projectStore";
-import { useEngineerStore } from "../store/engineerStore";
+import { useTeamStore } from "../store/teamStore";
 import { calculatePlanCapacity } from "../lib/scheduler/calculatePlanCapacity";
 import { calculateSchedule } from "../lib/scheduler/calculateSchedule";
 import { v4 as uuidv4 } from "uuid";
@@ -17,8 +17,8 @@ export default function Dashboard() {
     projects: state.projects
   }));
   
-  const { engineers } = useEngineerStore(state => ({
-    engineers: state.engineers
+  const { team } = useTeamStore(state => ({
+    team: state.team
   }));
   
   const [utilization, setUtilization] = useState({
@@ -34,22 +34,22 @@ export default function Dashboard() {
     [projects, currentPlanId],
   );
 
-  const planEngineers = React.useMemo(
-    () => engineers.filter((e) => e.planId === currentPlanId),
-    [engineers, currentPlanId],
+  const planTeam = React.useMemo(
+    () => team.filter((t) => t.planId === currentPlanId),
+    [team, currentPlanId],
   );
 
   // Memoize schedule calculation
   const calculateScheduleData = useCallback(() => {
-    if (!planProjects.length || !planEngineers.length || !currentPlan) {
+    if (!planProjects.length || !planTeam.length || !currentPlan) {
       return null;
     }
-    return calculateSchedule(planProjects, planEngineers, currentPlan?.excludes || []);
-  }, [planProjects, planEngineers, currentPlan]);
+    return calculateSchedule(planProjects, planTeam, currentPlan?.excludes || []);
+  }, [planProjects, planTeam, currentPlan]);
 
   // Calculate utilization
   const calculateUtilization = useCallback(() => {
-    if (!currentPlanId || !planEngineers.length || !currentPlan || !scheduleData) {
+    if (!currentPlanId || !planTeam.length || !currentPlan || !scheduleData) {
       return {
         totalCapacityHours: 0,
         assignedHours: 0,
@@ -58,12 +58,12 @@ export default function Dashboard() {
     }
     
     return calculatePlanCapacity(
-      planEngineers,
+      planTeam,
       scheduleData,
       currentPlan,
       planProjects,
     );
-  }, [currentPlanId, planEngineers, currentPlan, scheduleData, planProjects]);
+  }, [currentPlanId, planTeam, currentPlan, scheduleData, planProjects]);
 
   // Update schedule data when dependencies change
   useEffect(() => {
@@ -82,7 +82,7 @@ export default function Dashboard() {
 
     const exportData = {
       plan: currentPlan,
-      engineers: planEngineers,
+      team: planTeam,
       projects: planProjects,
       excludes: currentPlan.excludes,
     };
@@ -152,7 +152,7 @@ export default function Dashboard() {
         <div className="bg-white shadow rounded-lg p-4">
           <h3 className="text-lg font-medium mb-2">Project Overview</h3>
           <p>Total Projects: {projects.length}</p>
-          <p>Total Team Members: {engineers.length}</p>
+          <p>Total Team Members: {team.length}</p>
         </div>
       </div>
     </div>

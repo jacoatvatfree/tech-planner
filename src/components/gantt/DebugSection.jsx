@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import { usePlanStore } from "../../store/planStore";
 import { useProjectStore } from "../../store/projectStore";
-import { useEngineerStore } from "../../store/engineerStore";
+import { useTeamStore } from "../../store/teamStore";
 import { CopyButton } from "../common/CopyButton";
 
 // Export as named export for lazy loading compatibility
@@ -19,8 +19,8 @@ export function DebugSection() {
     projects: state.projects
   }));
   
-  const { engineers } = useEngineerStore(state => ({
-    engineers: state.engineers
+  const { team } = useTeamStore(state => ({
+    team: state.team
   }));
 
   // Memoize filtered data
@@ -29,9 +29,9 @@ export function DebugSection() {
     [projects, currentPlanId]
   );
   
-  const planEngineers = useMemo(() => 
-    engineers.filter(e => e.planId === currentPlanId),
-    [engineers, currentPlanId]
+  const planTeam = useMemo(() => 
+    team.filter(t => t.planId === currentPlanId),
+    [team, currentPlanId]
   );
 
   // Memoize debug data
@@ -43,12 +43,12 @@ export function DebugSection() {
       {
         plan: currentPlan,
         projects: planProjects,
-        engineers: planEngineers,
+        team: planTeam,
       },
       null,
       2
     );
-  }, [isExpanded, currentPlan, planProjects, planEngineers]);
+  }, [isExpanded, currentPlan, planProjects, planTeam]);
 
   return (
     <div className="border rounded-lg border-gray-200 print:hidden">
@@ -68,7 +68,7 @@ export function DebugSection() {
         <div className="mt-2 mx-4 mb-4">
           <div className="flex justify-between items-center mb-2">
             <span className="text-xs text-gray-500">
-              {planProjects.length} projects, {planEngineers.length} engineers
+              {planProjects.length} projects, {planTeam.length} team members
             </span>
             <CopyButton text={debugData} />
           </div>

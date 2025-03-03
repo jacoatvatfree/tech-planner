@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { usePlanStore } from "../store/planStore";
 import { useProjectStore } from "../store/projectStore";
-import { useEngineerStore } from "../store/engineerStore";
+import { useTeamStore } from "../store/teamStore";
 import logger from "../utils/logger";
 import { makePlan } from "../lib/factories";
 import {
@@ -62,7 +62,7 @@ function PlanForm({ onSubmit, onCancel, initialData = null }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 bg-gray-500 bg-opacity-75 flex items-center justify-center">
       <div className="bg-white rounded-lg p-6 max-w-md w-full">
         <h3 className="text-lg font-medium mb-4">
           {initialData ? "Edit Plan" : "Add New Plan"}
@@ -150,7 +150,7 @@ export default function PlanSelector() {
   } = usePlanStore();
   const [planToEdit, setPlanToEdit] = useState(null);
   const { initializeProjects, addProject } = useProjectStore();
-  const { initializeEngineers, addEngineer } = useEngineerStore();
+  const { initializeTeam, addTeamMember } = useTeamStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handlePlanSubmit = (plan) => {
@@ -201,26 +201,26 @@ export default function PlanSelector() {
       // Set the current plan ID immediately - this will initialize other stores
       setCurrentPlanId(newPlanId);
 
-      // Create a mapping of old to new IDs for engineers and projects
-      const engineerIdMap = {};
+      // Create a mapping of old to new IDs for team members and projects
+      const teamMemberIdMap = {};
       const projectIdMap = {};
 
-      // Import engineers first and build ID mapping
-      const engineerPromises = importData.engineers.map((engineer) => {
-        const oldId = engineer.id;
+      // Import team members first and build ID mapping
+      const teamMemberPromises = importData.engineers ? importData.engineers.map((teamMember) => {
+        const oldId = teamMember.id;
         const newId = uuidv4();
-        engineerIdMap[oldId] = newId;
+        teamMemberIdMap[oldId] = newId;
 
-        const newEngineer = {
-          ...engineer,
+        const newTeamMember = {
+          ...teamMember,
           id: newId,
           planId: newPlanId,
           allocations: [], // Reset allocations as they'll be set via project updates
         };
-        return addEngineer(newEngineer);
-      });
+        return addTeamMember(newTeamMember);
+      }) : [];
 
-      await Promise.all(engineerPromises);
+      await Promise.all(teamMemberPromises);
 
       // Import projects with their allocations in a single step
       const projectPromises = importData.projects.map((project) => {
@@ -236,9 +236,9 @@ export default function PlanSelector() {
               const endDate = new Date(allocation.endDate);
               const isStartDateEpoch = startDate.getFullYear() === 1970;
               const isEndDateEpoch = endDate.getFullYear() === 1970;
-              
+
               return {
-                engineerId: engineerIdMap[allocation.engineerId],
+                engineerId: teamMemberIdMap[allocation.engineerId], // Keep engineerId for backward compatibility
                 projectId: newId,
                 startDate: isStartDateEpoch ? null : startDate,
                 endDate: isEndDateEpoch ? null : endDate,
@@ -248,9 +248,12 @@ export default function PlanSelector() {
           : [];
 
         // Check if startAfter is 1970-01-01 (epoch) or invalid
-        const startAfter = project.startAfter ? new Date(project.startAfter) : null;
-        const isStartAfterEpoch = startAfter && startAfter.getFullYear() === 1970;
-        
+        const startAfter = project.startAfter
+          ? new Date(project.startAfter)
+          : null;
+        const isStartAfterEpoch =
+          startAfter && startAfter.getFullYear() === 1970;
+
         const newProject = {
           ...project,
           id: newId,

@@ -1,15 +1,15 @@
 import React from "react";
 import { usePlanStore } from "../../store/planStore";
 import { useProjectStore } from "../../store/projectStore";
-import { useEngineerStore } from "../../store/engineerStore";
+import { useTeamStore } from "../../store/teamStore";
 
 export function Statistics() {
   const { currentPlanId } = usePlanStore();
   const { projects } = useProjectStore();
-  const { engineers } = useEngineerStore();
+  const { team } = useTeamStore();
 
   const planProjects = projects.filter((p) => p.planId === currentPlanId);
-  const planEngineers = engineers.filter((e) => e.planId === currentPlanId);
+  const planTeam = team.filter((t) => t.planId === currentPlanId);
 
   const { resourceUtilization } = useProjectStore((state) => ({
     resourceUtilization: state.schedule?.resourceUtilization || {
@@ -25,7 +25,7 @@ export function Statistics() {
 
   const stats = [
     { name: "Total Projects", value: planProjects.length },
-    { name: "Total Engineers", value: planEngineers.length },
+    { name: "Total Team Members", value: planTeam.length },
     {
       name: "Resource Usage",
       value: `${totalAllocated}/${totalAvailable}`,

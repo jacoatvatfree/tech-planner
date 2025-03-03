@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { makeProject } from "../../lib";
-import EngineerSelect from "../engineers/EngineerSelect";
+import TeamMemberSelect from "../team/TeamMemberSelect";
 import { format } from "date-fns";
 
 export default function ProjectForm({
@@ -238,9 +238,9 @@ export default function ProjectForm({
         />
       </div>
 
-      <EngineerSelect
-        selectedEngineers={formData.allocations.map((a) => a.engineerId)}
-        onEngineerSelect={(selectedEngineers) => {
+      <TeamMemberSelect
+        selectedTeamMembers={formData.allocations.map((a) => a.engineerId)}
+        onTeamMemberSelect={(selectedTeamMembers) => {
           const startDate = formData.startAfter
             ? new Date(formData.startAfter)
             : new Date();
@@ -252,11 +252,11 @@ export default function ProjectForm({
 
           // Preserve existing allocations that are still selected
           const existingAllocations = formData.allocations.filter(
-            (allocation) => selectedEngineers.includes(allocation.engineerId),
+            (allocation) => selectedTeamMembers.includes(allocation.engineerId),
           );
 
-          // Add new allocations for newly selected engineers
-          const newEngineerIds = selectedEngineers.filter(
+          // Add new allocations for newly selected team members
+          const newTeamMemberIds = selectedTeamMembers.filter(
             (engineerId) =>
               !formData.allocations.some(
                 (allocation) => allocation.engineerId === engineerId,
@@ -265,8 +265,8 @@ export default function ProjectForm({
 
           const newAllocations = [
             ...existingAllocations,
-            ...newEngineerIds.map((engineerId) => ({
-              engineerId,
+            ...newTeamMemberIds.map((engineerId) => ({
+              engineerId, // Keep engineerId for backward compatibility
               startDate,
               endDate,
               percentage: 100,
