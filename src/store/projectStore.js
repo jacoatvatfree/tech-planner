@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import logger from "../utils/logger";
+import { clearAllCaches } from "../lib/scheduler";
 
 const STORAGE_KEY = "projects_data";
 
@@ -47,6 +48,10 @@ const useProjectStore = create((set, get) => ({
         `${STORAGE_KEY}_${planId}`,
         JSON.stringify(newState.projects),
       );
+      
+      // Clear caches to ensure schedule is recalculated
+      clearAllCaches();
+      
       return newState;
     }),
   updateProject: (updatedProject) =>
@@ -66,6 +71,10 @@ const useProjectStore = create((set, get) => ({
         `${STORAGE_KEY}_${planId}`,
         JSON.stringify(newState.projects),
       );
+      
+      // Clear caches to ensure schedule is recalculated
+      clearAllCaches();
+      
       return newState;
     }),
   removeProject: (id) =>
@@ -83,6 +92,10 @@ const useProjectStore = create((set, get) => ({
         `${STORAGE_KEY}_${planId}`,
         JSON.stringify(newState.projects),
       );
+      
+      // Clear caches to ensure schedule is recalculated
+      clearAllCaches();
+      
       return newState;
     }),
   clearProjects: () =>
@@ -94,6 +107,10 @@ const useProjectStore = create((set, get) => ({
       }
       
       localStorage.removeItem(`${STORAGE_KEY}_${planId}`);
+      
+      // Clear caches to ensure schedule is recalculated
+      clearAllCaches();
+      
       return { projects: [] };
     }),
   reprioritizeProjects: () =>
@@ -115,6 +132,10 @@ const useProjectStore = create((set, get) => ({
         `${STORAGE_KEY}_${planId}`,
         JSON.stringify(sortedProjects),
       );
+      
+      // Clear caches to ensure schedule is recalculated
+      clearAllCaches();
+      
       return { projects: sortedProjects };
     }),
 }));

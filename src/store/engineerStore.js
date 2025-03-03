@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import logger from "../utils/logger";
+import { clearAllCaches } from "../lib/scheduler";
 
 const STORAGE_KEY = "engineers_data";
 
@@ -29,6 +30,10 @@ const useEngineerStore = create((set, get) => ({
         `${STORAGE_KEY}_${planId}`,
         JSON.stringify(newState.engineers),
       );
+      
+      // Clear caches to ensure schedule is recalculated
+      clearAllCaches();
+      
       return newState;
     }),
   updateEngineer: (id, updates) =>
@@ -47,6 +52,10 @@ const useEngineerStore = create((set, get) => ({
         `${STORAGE_KEY}_${planId}`,
         JSON.stringify(newState.engineers),
       );
+      
+      // Clear caches to ensure schedule is recalculated
+      clearAllCaches();
+      
       return newState;
     }),
   removeEngineer: (id) =>
@@ -63,6 +72,10 @@ const useEngineerStore = create((set, get) => ({
         `${STORAGE_KEY}_${planId}`,
         JSON.stringify(newState.engineers),
       );
+      
+      // Clear caches to ensure schedule is recalculated
+      clearAllCaches();
+      
       return newState;
     }),
   clearEngineers: () =>
@@ -73,6 +86,10 @@ const useEngineerStore = create((set, get) => ({
         return state;
       }
       localStorage.removeItem(`${STORAGE_KEY}_${planId}`);
+      
+      // Clear caches to ensure schedule is recalculated
+      clearAllCaches();
+      
       return { engineers: [] };
     }),
 }));

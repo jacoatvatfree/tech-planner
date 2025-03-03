@@ -123,11 +123,12 @@ const calculationCache = {
   workloadCache: new Map(),
 };
 
-// Clear cache when needed
-function clearCalculationCache() {
+// Clear cache when needed - exported for use in stores
+export function clearCalculationCache() {
   calculationCache.projectDuration.clear();
   calculationCache.overlappingAssignments.clear();
   calculationCache.workloadCache.clear();
+  logger.debug("Calculation cache cleared");
 }
 
 // Memoized version of calculateProjectDuration

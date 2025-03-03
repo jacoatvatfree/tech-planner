@@ -1,4 +1,5 @@
 import { dateUtils } from "./dateUtils";
+import logger from "../../utils/logger";
 
 // Cache for expensive calculations
 const markupCache = {
@@ -8,12 +9,13 @@ const markupCache = {
   fullMarkup: new Map(),
 };
 
-// Clear cache when needed
-function clearMarkupCache() {
+// Clear cache when needed - exported for use in stores
+export function clearMarkupCache() {
   markupCache.assignmentDetails.clear();
   markupCache.engineerMarkup.clear();
   markupCache.projectMarkup.clear();
   markupCache.fullMarkup.clear();
+  logger.debug("Markup cache cleared");
 }
 
 // Memoized version of calculateAssignmentDetails

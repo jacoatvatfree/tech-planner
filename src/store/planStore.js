@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { useProjectStore } from "./projectStore";
 import { useEngineerStore } from "./engineerStore";
 import logger from "../utils/logger";
+import { clearAllCaches } from "../lib/scheduler";
 
 // Helper function to recursively regenerate all "id" properties in an object or array.
 // This assigns a new uuid for every property named "id".
@@ -84,6 +85,10 @@ const usePlanStore = create((set, get) => ({
         plans: [...state.plans, newPlan],
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newState.plans));
+      
+      // Clear caches to ensure schedule is recalculated
+      clearAllCaches();
+      
       return newState;
     }),
   // New function to import a plan by regenerating all nested ids.
@@ -98,6 +103,10 @@ const usePlanStore = create((set, get) => ({
         plans: [...state.plans, newPlan],
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newState.plans));
+      
+      // Clear caches to ensure schedule is recalculated
+      clearAllCaches();
+      
       return newState;
     }),
   updatePlan: (id, updates) =>
@@ -108,6 +117,10 @@ const usePlanStore = create((set, get) => ({
         ),
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newState.plans));
+      
+      // Clear caches to ensure schedule is recalculated
+      clearAllCaches();
+      
       return newState;
     }),
   removePlan: (id) =>
@@ -119,6 +132,10 @@ const usePlanStore = create((set, get) => ({
       localStorage.removeItem(`projects_data_${id}`);
       localStorage.removeItem(`engineers_data_${id}`);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newState.plans));
+      
+      // Clear caches to ensure schedule is recalculated
+      clearAllCaches();
+      
       return newState;
     }),
   setCurrentPlanId: (id) =>
@@ -136,6 +153,9 @@ const usePlanStore = create((set, get) => ({
       // Synchronize with other stores
       get().syncCurrentPlanId(id);
       
+      // Clear caches to ensure schedule is recalculated
+      clearAllCaches();
+      
       return { ...state, currentPlanId: id, plans: updatedPlans };
     }),
   clearPlans: () =>
@@ -145,6 +165,9 @@ const usePlanStore = create((set, get) => ({
       
       // Clear the current plan ID in other stores
       get().syncCurrentPlanId(null);
+      
+      // Clear caches to ensure schedule is recalculated
+      clearAllCaches();
       
       return { plans: [], currentPlanId: null };
     }),

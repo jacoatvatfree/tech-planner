@@ -84,6 +84,12 @@ This document outlines the tasks needed to address the infinite loop/recurring c
 
 ## Data Management
 
+- [x] **Clear caches when data changes**
+  - ✅ Created a centralized cache clearing utility
+  - ✅ Added cache clearing to all store operations that modify data
+  - ✅ Implemented proper logging for cache clearing operations
+  - Files modified: `src/lib/scheduler/cacheUtils.js`, `src/store/planStore.js`, `src/store/projectStore.js`, `src/store/engineerStore.js`
+
 - [ ] **Implement pagination or virtualization for large datasets**
   - Consider implementing pagination or virtualization for large plans
   - Optimize how large data structures are handled
@@ -93,3 +99,12 @@ This document outlines the tasks needed to address the infinite loop/recurring c
   - Review how data is stored and retrieved from localStorage
   - Consider implementing a more efficient storage strategy
   - Files to modify: Store files using localStorage
+
+## Scheduling Improvements
+
+- [ ] **Fix scheduling gaps issue**
+  - Modified the scheduling algorithm to allow lower priority projects to be scheduled in gaps
+  - Replaced `findCommonStartDate` with `findEarliestStartDate` to find the earliest possible slot for each project
+  - Updated the import process to reset placeholder dates (1970-01-01) to null
+  - ✅ Disabled Gantt markup caching to ensure fresh markup generation
+  - Files modified: `src/lib/scheduler/calculateSchedule.js`, `src/components/PlanSelector.jsx`, `src/pages/GanttView.jsx`, `src/lib/scheduler/generateGanttMarkup.js`
