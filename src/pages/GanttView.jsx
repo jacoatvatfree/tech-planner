@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useProjectStore } from "../store/projectStore";
 import { useTeamStore } from "../store/teamStore";
 import { usePlanStore } from "../store/planStore";
@@ -7,6 +8,7 @@ import { generateGanttMarkup } from "../lib/scheduler/generateGanttMarkup";
 import { calculateSchedule } from "../lib/scheduler/calculateSchedule";
 import GanttChart from "../components/gantt/GanttChart";
 import { Statistics } from "../components/gantt/Statistics";
+import ProjectForm from "../components/projects/ProjectForm";
 
 export default function GanttView() {
   // Get data from stores with more specific selectors
@@ -15,9 +17,10 @@ export default function GanttView() {
     currentPlanId: state.currentPlanId
   }));
   
-  const { projects, setSchedule } = useProjectStore(state => ({
+  const { projects, setSchedule, updateProject } = useProjectStore(state => ({
     projects: state.projects,
-    setSchedule: state.setSchedule
+    setSchedule: state.setSchedule,
+    updateProject: state.updateProject
   }));
   
   const { team, updateTeamMember } = useTeamStore(state => ({
@@ -30,6 +33,12 @@ export default function GanttView() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [viewType, setViewType] = useState("resource");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState(null);
+  
+  const params = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   // Memoize filtered data
   const planProjects = useMemo(
@@ -100,12 +109,16 @@ export default function GanttView() {
         setSchedule(result);
       }
 
+      // Get the base URL (protocol, host, port)
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      
       const newMarkup = generateGanttMarkup(
         result?.assignments || [],
         planTeam,
         planProjects,
         currentPlan,
-        viewType
+        viewType,
+        baseUrl
       );
 
       if (!newMarkup) {
@@ -132,6 +145,52 @@ export default function GanttView() {
   useEffect(() => {
     calculateAndSetSchedule();
   }, [calculateAndSetSchedule]);
+  
+  // Check for shortId in URL path
+  useEffect(() => {
+    // Check if the URL contains /p/{shortId}
+    const match = location.pathname.match(/\/schedule\/p\/([a-zA-Z0-9]{8})$/);
+    
+    if (match && planProjects.length > 0) {
+      const shortId = match[1];
+      // Find project with matching shortId (first 8 chars of full ID)
+      const project = planProjects.find(p => p.id.substring(0, 8) === shortId);
+      
+      if (project) {
+        setEditingProject(project);
+        setIsModalOpen(true);
+        
+        // Clear the path parameter after opening the modal
+        navigate('/schedule', { replace: true });
+      }
+    }
+  }, [location.pathname, planProjects, navigate]);
+  
+  // Handle project update
+  const handleUpdateProject = async (project) => {
+    try {
+      const updatedProject = {
+        ...editingProject,
+        ...project,
+        id: editingProject.id,
+        planId: currentPlanId || editingProject.planId,
+        allocations: project.allocations?.map(allocation => ({
+          ...allocation,
+          startDate: new Date(allocation.startDate),
+          endDate: new Date(allocation.endDate),
+        })) || [],
+      };
+
+      await updateProject(updatedProject);
+      setIsModalOpen(false);
+      setEditingProject(null);
+      
+      // Recalculate schedule to reflect changes
+      calculateAndSetSchedule();
+    } catch (error) {
+      logger.error("Failed to update project:", error);
+    }
+  };
   if (error) {
     return (
       <div className="p-4 bg-red-50 text-red-700 rounded">Error: {error}</div>
@@ -186,6 +245,31 @@ export default function GanttView() {
         </div>
       </div>
       {markup && <GanttChart markup={markup} />}
+      
+      {/* Project Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div
+              className="fixed inset-0 transition-opacity"
+              aria-hidden="true"
+            >
+              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <ProjectForm
+                onSubmit={handleUpdateProject}
+                onCancel={() => {
+                  setIsModalOpen(false);
+                  setEditingProject(null);
+                }}
+                editingProject={editingProject}
+                planStartDate={currentPlan?.startDate}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

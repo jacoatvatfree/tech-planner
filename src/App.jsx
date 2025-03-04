@@ -54,7 +54,23 @@ function App() {
           }
         />
         <Route
+          path="projects/:shortId"
+          element={
+            <ProtectedRoute>
+              <Projects />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="schedule"
+          element={
+            <ProtectedRoute>
+              <GanttView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="schedule/p/:shortId"
           element={
             <ProtectedRoute>
               <GanttView />

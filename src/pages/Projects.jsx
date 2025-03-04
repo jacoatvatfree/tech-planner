@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import ProjectList from "../components/projects/ProjectList";
 import ProjectForm from "../components/projects/ProjectForm";
 import { useProjectStore } from "../store/projectStore";
@@ -10,17 +11,41 @@ export default function Projects() {
     updateProject,
     initializeProjects,
     reprioritizeProjects,
+    projects
   } = useProjectStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
   const { currentPlanId, plans } = usePlanStore();
   const currentPlan = plans.find((plan) => plan.id === currentPlanId);
+  const location = useLocation();
+  const navigate = useNavigate();
 
+  // Initialize projects when plan changes
   useEffect(() => {
     if (currentPlanId) {
       initializeProjects(currentPlanId);
     }
   }, [currentPlanId, initializeProjects]);
+
+  // Check for shortId in URL path
+  useEffect(() => {
+    const path = location.pathname;
+    const match = path.match(/\/projects\/([a-zA-Z0-9]{8})$/);
+    
+    if (match && projects.length > 0) {
+      const shortId = match[1];
+      // Find project with matching shortId (first 8 chars of full ID)
+      const project = projects.find(p => p.id.substring(0, 8) === shortId);
+      
+      if (project) {
+        setEditingProject(project);
+        setIsModalOpen(true);
+        
+        // Clear the path parameter after opening the modal
+        navigate('/projects', { replace: true });
+      }
+    }
+  }, [location.pathname, projects, navigate]);
 
   const handleAddProject = async (project) => {
     try {
