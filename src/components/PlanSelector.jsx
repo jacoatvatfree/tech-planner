@@ -4,6 +4,7 @@ import { useProjectStore } from "../store/projectStore";
 import { useTeamStore } from "../store/teamStore";
 import logger from "../utils/logger";
 import { makePlan } from "../lib/factories";
+import { deprecatedGetTeamData, deprecatedAllocationsToTeamMemberIds } from "../utils/deprecatedCompatibility";
 import {
   PlusIcon,
   TrashIcon,
@@ -206,7 +207,8 @@ export default function PlanSelector() {
       const projectIdMap = {};
 
       // Import team members first and build ID mapping
-      const teamMemberPromises = importData.engineers ? importData.engineers.map((teamMember) => {
+      const teamMembers = deprecatedGetTeamData(importData);
+      const teamMemberPromises = teamMembers.map((teamMember) => {
         const oldId = teamMember.id;
         const newId = uuidv4();
         teamMemberIdMap[oldId] = newId;
@@ -218,7 +220,7 @@ export default function PlanSelector() {
           allocations: [], // Reset allocations as they'll be set via project updates
         };
         return addTeamMember(newTeamMember);
-      }) : [];
+      });
 
       await Promise.all(teamMemberPromises);
 
@@ -261,6 +263,10 @@ export default function PlanSelector() {
           endBefore: project.endBefore ? new Date(project.endBefore) : null, // Keep endBefore as it's a constraint
           planId: newPlanId,
           allocations: newAllocations,
+          // Map teamMemberIds to new IDs or extract from allocations
+          teamMemberIds: project.teamMemberIds 
+            ? project.teamMemberIds.map(id => teamMemberIdMap[id]).filter(Boolean)
+            : (newAllocations.length ? deprecatedAllocationsToTeamMemberIds(newAllocations) : [])
         };
 
         return addProject(newProject);

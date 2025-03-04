@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import logger from "../utils/logger";
 import { clearAllCaches } from "../lib/scheduler";
+import { deprecatedAllocationsToTeamMemberIds } from "../utils/deprecatedCompatibility";
 
 const STORAGE_KEY = "projects_data";
 
@@ -19,19 +20,17 @@ const getInitialState = (planId) => {
       return project;
     }
     
-    // If the project has allocations, convert them to teamMemberIds
-    if (project.allocations?.length) {
-      // Extract unique engineerIds from allocations
-      const teamMemberIds = [...new Set(
-        project.allocations.map(allocation => allocation.engineerId)
-      )];
-      
-      // Return a new project object with teamMemberIds
-      return {
-        ...project,
-        teamMemberIds
-      };
-    }
+  // If the project has allocations, convert them to teamMemberIds
+  if (project.allocations?.length) {
+    // Extract unique engineerIds from allocations using deprecated utility
+    const teamMemberIds = deprecatedAllocationsToTeamMemberIds(project.allocations);
+    
+    // Return a new project object with teamMemberIds
+    return {
+      ...project,
+      teamMemberIds
+    };
+  }
     
     // If the project has neither, return it with an empty teamMemberIds array
     return {
@@ -77,10 +76,8 @@ const useProjectStore = create((set, get) => ({
       let projectWithTeamMemberIds = project;
       
       if (!project.teamMemberIds && project.allocations?.length) {
-        // Extract unique engineerIds from allocations
-        const teamMemberIds = [...new Set(
-          project.allocations.map(allocation => allocation.engineerId)
-        )];
+        // Extract unique engineerIds from allocations using deprecated utility
+        const teamMemberIds = deprecatedAllocationsToTeamMemberIds(project.allocations);
         
         // Create a new project with teamMemberIds
         projectWithTeamMemberIds = {
@@ -120,10 +117,8 @@ const useProjectStore = create((set, get) => ({
       let projectWithTeamMemberIds = updatedProject;
       
       if (!updatedProject.teamMemberIds && updatedProject.allocations?.length) {
-        // Extract unique engineerIds from allocations
-        const teamMemberIds = [...new Set(
-          updatedProject.allocations.map(allocation => allocation.engineerId)
-        )];
+        // Extract unique engineerIds from allocations using deprecated utility
+        const teamMemberIds = deprecatedAllocationsToTeamMemberIds(updatedProject.allocations);
         
         // Create a new project with teamMemberIds
         projectWithTeamMemberIds = {

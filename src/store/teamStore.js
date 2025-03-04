@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import logger from "../utils/logger";
 import { clearAllCaches } from "../lib/scheduler";
+import { deprecatedLogEngineerTerminology } from "../utils/deprecatedCompatibility";
 
 const STORAGE_KEY = "engineers_data"; // Keep for backward compatibility
 
@@ -92,17 +93,53 @@ const useTeamStore = create((set, get) => ({
 
       return { team: [] };
     }),
-  // Alias for backward compatibility
+  // Deprecated aliases for backward compatibility
+  /**
+   * @deprecated Use team instead of engineers
+   */
   get engineers() {
+    deprecatedLogEngineerTerminology();
     return get().team;
   },
-  initializeEngineers: (planId) => get().initializeTeam(planId),
-  addEngineer: (engineer) => get().addTeamMember(engineer),
-  updateEngineer: (id, updates) => get().updateTeamMember(id, updates),
-  removeEngineer: (id) => get().removeTeamMember(id),
-  clearEngineers: () => get().clearTeam(),
+  /**
+   * @deprecated Use initializeTeam instead
+   */
+  initializeEngineers: (planId) => {
+    deprecatedLogEngineerTerminology();
+    return get().initializeTeam(planId);
+  },
+  /**
+   * @deprecated Use addTeamMember instead
+   */
+  addEngineer: (engineer) => {
+    deprecatedLogEngineerTerminology();
+    return get().addTeamMember(engineer);
+  },
+  /**
+   * @deprecated Use updateTeamMember instead
+   */
+  updateEngineer: (id, updates) => {
+    deprecatedLogEngineerTerminology();
+    return get().updateTeamMember(id, updates);
+  },
+  /**
+   * @deprecated Use removeTeamMember instead
+   */
+  removeEngineer: (id) => {
+    deprecatedLogEngineerTerminology();
+    return get().removeTeamMember(id);
+  },
+  /**
+   * @deprecated Use clearTeam instead
+   */
+  clearEngineers: () => {
+    deprecatedLogEngineerTerminology();
+    return get().clearTeam();
+  },
 }));
 
 export { useTeamStore };
-// For backward compatibility
+/**
+ * @deprecated Use useTeamStore instead
+ */
 export const useEngineerStore = useTeamStore;

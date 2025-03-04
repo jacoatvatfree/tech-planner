@@ -1,4 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
+import logger from "../utils/logger";
+import { deprecatedLogEngineerTerminology } from "../utils/deprecatedCompatibility";
 
 /**
  * Create a new team member
@@ -10,9 +12,13 @@ export const makeTeamMember = ({ name, weeklyHours = 40 }) => ({
 });
 
 /**
- * Alias for backward compatibility
+ * @deprecated Use makeTeamMember instead
+ * This function is used for backward compatibility and will be removed in a future version.
  */
-export const makeEngineer = makeTeamMember;
+export const makeEngineer = (data) => {
+  deprecatedLogEngineerTerminology();
+  return makeTeamMember(data);
+};
 
 /**
  * Create a new project
@@ -41,7 +47,9 @@ export const makeProject = ({
 });
 
 /**
- * Create a new allocation
+ * @deprecated Create a new allocation
+ * This function is used for backward compatibility and will be removed in a future version.
+ * Projects should use teamMemberIds instead of allocations.
  */
 export const makeAllocation = ({
   projectId,
@@ -49,28 +57,38 @@ export const makeAllocation = ({
   startDate,
   endDate,
   percentage = 100,
-}) => ({
-  projectId,
-  engineerId, // This remains engineerId for backward compatibility with existing data
-  startDate: new Date(startDate),
-  endDate: new Date(endDate),
-  percentage,
-});
+}) => {
+  logger.warn("DEPRECATED: Creating allocations - use teamMemberIds instead");
+  return {
+    projectId,
+    engineerId, // This remains engineerId for backward compatibility with existing data
+    startDate: new Date(startDate),
+    endDate: new Date(endDate),
+    percentage,
+  };
+};
 
 /**
- * Create a new schedule
+ * @deprecated Create a new schedule
+ * This function is used for backward compatibility and will be removed in a future version.
  */
 export const makeSchedule = ({
   startDate,
   endDate,
   projects = [],
   engineers = [], // Keep engineers for backward compatibility
-}) => ({
-  startDate: new Date(startDate),
-  endDate: new Date(endDate),
-  projects,
-  engineers, // This remains engineers for backward compatibility with existing data
-});
+}) => {
+  if (engineers.length > 0) {
+    deprecatedLogEngineerTerminology();
+  }
+  
+  return {
+    startDate: new Date(startDate),
+    endDate: new Date(endDate),
+    projects,
+    engineers, // This remains engineers for backward compatibility with existing data
+  };
+};
 
 /**
  * Create a new plan

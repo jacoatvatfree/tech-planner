@@ -24,21 +24,23 @@ function memoizedCalculateAssignmentDetails(
   engineers,
   projects,
   assignments,
-  safeEndDate
+  safeEndDate,
 ) {
   const cacheKey = `${assignment.projectId}_${assignment.engineerId}_${assignment.startDate}`;
-  
+
   // Temporarily disable caching to ensure fresh markup generation
   // if (markupCache.assignmentDetails.has(cacheKey)) {
   //   return markupCache.assignmentDetails.get(cacheKey);
   // }
-  
+
   // Check for null or epoch dates
-  const assignmentStartDate = assignment.startDate ? new Date(assignment.startDate) : null;
+  const assignmentStartDate = assignment.startDate
+    ? new Date(assignment.startDate)
+    : null;
   if (!assignmentStartDate || assignmentStartDate.getFullYear() === 1970) {
     throw new Error("Invalid or epoch date");
   }
-  
+
   const startDate = dateUtils.getNextWeekday(assignmentStartDate);
   if (isNaN(startDate.getTime())) throw new Error("Invalid date");
 
@@ -48,9 +50,9 @@ function memoizedCalculateAssignmentDetails(
 
   // Calculate total weekly hours for the project (memoize this calculation in the future if needed)
   const projectAssignments = assignments.filter(
-    (a) => a.projectId === assignment.projectId
+    (a) => a.projectId === assignment.projectId,
   );
-  
+
   let totalWeeklyHours = 0;
   for (const a of projectAssignments) {
     const eng = engineers.find((e) => e.id === a.engineerId);
@@ -65,12 +67,13 @@ function memoizedCalculateAssignmentDetails(
 
   // Calculate if project ends after endBefore date
   let projectEndDate = new Date(startDate);
-  for (let i = 0; i < Math.min(days, 365); i++) { // Limit to prevent infinite loops
+  for (let i = 0; i < Math.min(days, 365); i++) {
+    // Limit to prevent infinite loops
     projectEndDate = dateUtils.getNextWeekday(
-      new Date(projectEndDate.setDate(projectEndDate.getDate() + 1))
+      new Date(projectEndDate.setDate(projectEndDate.getDate() + 1)),
     );
   }
-  
+
   const isCritical =
     (project.endBefore && projectEndDate > new Date(project.endBefore)) ||
     projectEndDate > safeEndDate;
@@ -99,7 +102,7 @@ function memoizedCalculateAssignmentDetails(
     criticalLabel,
     project,
   };
-  
+
   markupCache.assignmentDetails.set(cacheKey, result);
   return result;
 }
@@ -117,15 +120,15 @@ function generateEngineerMarkup(
   engineers,
   projects,
   allAssignments,
-  safeEndDate
+  safeEndDate,
 ) {
-  const cacheKey = `${engineer.id}_${JSON.stringify(engineerAssignments.map(a => a.id))}`;
-  
+  const cacheKey = `${engineer.id}_${JSON.stringify(engineerAssignments.map((a) => a.id))}`;
+
   // Temporarily disable caching to ensure fresh markup generation
   // if (markupCache.engineerMarkup.has(cacheKey)) {
   //   return markupCache.engineerMarkup.get(cacheKey);
   // }
-  
+
   let markup = `\n    section ${engineer.name}\n`;
 
   if (engineerAssignments.length === 0) {
@@ -144,19 +147,19 @@ function generateEngineerMarkup(
         engineers,
         projects,
         allAssignments,
-        safeEndDate
+        safeEndDate,
       );
-      
+
       markup += generateAssignmentMarkup(
         assignment,
         details,
-        `${project.name} (${Math.round(project.percentComplete || 0)}%)`
+        `${project.name} (${Math.round(project.percentComplete || 0)}%)`,
       );
     } catch (error) {
       // Skip invalid assignments silently
     }
   }
-  
+
   markupCache.engineerMarkup.set(cacheKey, markup);
   return markup;
 }
@@ -168,15 +171,15 @@ function generateProjectMarkup(
   engineers,
   projects,
   allAssignments,
-  safeEndDate
+  safeEndDate,
 ) {
-  const cacheKey = `${project.id}_${JSON.stringify(projectAssignments.map(a => a.id))}`;
-  
+  const cacheKey = `${project.id}_${JSON.stringify(projectAssignments.map((a) => a.id))}`;
+
   // Temporarily disable caching to ensure fresh markup generation
   // if (markupCache.projectMarkup.has(cacheKey)) {
   //   return markupCache.projectMarkup.get(cacheKey);
   // }
-  
+
   let markup = `\n    section ${project.name} (${Math.round(project.percentComplete || 0)}%)\n`;
 
   if (projectAssignments.length === 0) {
@@ -195,19 +198,15 @@ function generateProjectMarkup(
         engineers,
         projects,
         allAssignments,
-        safeEndDate
+        safeEndDate,
       );
-      
-      markup += generateAssignmentMarkup(
-        assignment,
-        details,
-        engineer.name
-      );
+
+      markup += generateAssignmentMarkup(assignment, details, engineer.name);
     } catch (error) {
       // Skip invalid assignments silently
     }
   }
-  
+
   markupCache.projectMarkup.set(cacheKey, markup);
   return markup;
 }
@@ -218,23 +217,23 @@ export function generateGanttMarkup(
   engineers = [],
   projects = [],
   plan = {},
-  viewType = "resource" // 'resource' or 'project'
+  viewType = "resource", // 'resource' or 'project'
 ) {
   // Create a cache key based on inputs
-  const cacheKey = `${viewType}_${plan?.id || ''}_${assignments.length}_${engineers.length}_${projects.length}`;
-  
+  const cacheKey = `${viewType}_${plan?.id || ""}_${assignments.length}_${engineers.length}_${projects.length}`;
+
   // Temporarily disable caching to ensure fresh markup generation
   // if (markupCache.fullMarkup.has(cacheKey)) {
   //   return markupCache.fullMarkup.get(cacheKey);
   // }
-  
+
   // Clear cache if it gets too large (prevent memory leaks)
   if (markupCache.fullMarkup.size > 10) {
     clearMarkupCache();
   }
-  
+
   const excludes = plan.excludes?.join(",") || "weekends";
-  
+
   // Create safe dates
   const safeStartDate = plan.startDate ? new Date(plan.startDate) : new Date();
   const safeEndDate = plan.endDate ? new Date(plan.endDate) : new Date();
@@ -243,10 +242,10 @@ export function generateGanttMarkup(
   if (!assignments?.length || !engineers?.length || !projects?.length) {
     const noDataMarkup = `gantt
       dateFormat YYYY/MM/DD
-      title ${plan.name || 'Resource Planner'}
+      title ${plan.name || "Resource Planner"}
       section No Data
       No assignments found :2024/01/01, 1d`;
-    
+
     markupCache.fullMarkup.set(cacheKey, noDataMarkup);
     return noDataMarkup;
   }
@@ -255,10 +254,10 @@ export function generateGanttMarkup(
   if (isNaN(safeStartDate.getTime()) || isNaN(safeEndDate.getTime())) {
     const errorMarkup = `gantt
     dateFormat YYYY/MM/DD
-    title ${plan.name || 'Resource Planner'}
+    title ${plan.name || "Resource Planner"}
     section Error
     Invalid dates :2024/01/01, 1d`;
-    
+
     markupCache.fullMarkup.set(cacheKey, errorMarkup);
     return errorMarkup;
   }
@@ -266,7 +265,7 @@ export function generateGanttMarkup(
   // Initialize markup
   let markup = `gantt
     dateFormat YYYY/MM/DD
-    title ${plan.name || 'Resource Planner'}
+    title ${[plan.name, "Resource Planner"].join(" - ")}
     axisFormat %Y/%m/%d
     tickInterval 1week
     excludes ${excludes}
@@ -279,45 +278,45 @@ export function generateGanttMarkup(
   if (viewType === "resource") {
     // Pre-sort assignments by start date to avoid repeated sorting
     const sortedAssignmentsByEngineer = new Map();
-    
+
     for (const engineer of engineers) {
       const engineerAssignments = assignments
         .filter((a) => a.engineerId === engineer.id)
         .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
-      
+
       sortedAssignmentsByEngineer.set(engineer.id, engineerAssignments);
-      
+
       markup += generateEngineerMarkup(
         engineer,
         engineerAssignments,
         engineers,
         projects,
         assignments,
-        safeEndDate
+        safeEndDate,
       );
     }
   } else if (viewType === "project") {
     // Pre-sort assignments by start date to avoid repeated sorting
     const sortedAssignmentsByProject = new Map();
-    
+
     for (const project of projects) {
       const projectAssignments = assignments
         .filter((a) => a.projectId === project.id)
         .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
-      
+
       sortedAssignmentsByProject.set(project.id, projectAssignments);
-      
+
       markup += generateProjectMarkup(
         project,
         projectAssignments,
         engineers,
         projects,
         assignments,
-        safeEndDate
+        safeEndDate,
       );
     }
   }
-  
+
   markup += "\n    section End\n";
   markup += `        e :milestone, ${dateUtils.toISOLocalString(safeEndDate)}, 0d\n\n`;
 

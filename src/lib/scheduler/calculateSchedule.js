@@ -1,6 +1,7 @@
 import { dateUtils } from "./dateUtils";
 import logger from "../../utils/logger";
 import { calculateProjectDuration } from "../../lib/allocation";
+import { deprecatedAllocationsToTeamMemberIds } from "../../utils/deprecatedCompatibility";
 
 // Project scheduling helper functions
 const schedulingUtils = {
@@ -455,7 +456,7 @@ export function calculateSchedule(projects, engineers, planExcludes = [], planSt
     } 
     // If project has allocations (old format), extract engineerIds from allocations
     else if (project.allocations?.length) {
-      teamMemberIds = project.allocations.map(allocation => allocation.engineerId);
+      teamMemberIds = deprecatedAllocationsToTeamMemberIds(project.allocations);
     }
     
     // Skip projects without team members or hours
