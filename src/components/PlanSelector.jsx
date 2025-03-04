@@ -156,7 +156,8 @@ function PlanForm({ onSubmit, onCancel, initialData = null }) {
 
           <div className="flex justify-between pt-4">
             <div>
-              <button
+              {initialData && (
+                <button
                 type="button"
                 onClick={handleExportPlan}
                 className="px-4 py-2 text-sm font-medium text-gray-800 bg-blue-100 rounded-md hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 inline-flex items-center"
@@ -164,6 +165,7 @@ function PlanForm({ onSubmit, onCancel, initialData = null }) {
                 <DocumentArrowDownIcon className="h-4 w-4 mr-1" />
                 Export
               </button>
+              )}
             </div>
             <div className="flex space-x-3">
               <button
@@ -363,7 +365,7 @@ export default function PlanSelector() {
               </button>
             )}
             <div className="flex space-x-2">
-              <label className="inline-flex items-center p-2 rounded-md text-white bg-green-600 hover:bg-green-700 cursor-pointer">
+              <label className="inline-flex items-center p-2 rounded-md text-white bg-green-100 hover:bg-green-200 cursor-pointer">
                 <ArrowUpTrayIcon className="h-5 w-5" />
                 <input
                   type="file"
@@ -420,11 +422,10 @@ export default function PlanSelector() {
             </div>
           ))}
           <div className="flex space-x-2">
-            <label className="inline-flex items-center px-3 py-2 rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700 cursor-pointer">
+            <label className="inline-flex items-center px-3 py-2 rounded-md text-sm font-medium text-gray-700 bg-green-100 hover:bg-green-200 cursor-pointer">
               <ArrowUpTrayIcon className="h-4 w-4 mr-1" />
-              Import Plan
+              Import
               <input
-                type="file"
                 accept=".json"
                 onChange={handleImportPlan}
                 className="hidden"
@@ -435,7 +436,7 @@ export default function PlanSelector() {
               className="inline-flex items-center px-3 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
             >
               <PlusIcon className="h-4 w-4 mr-1" />
-              New Plan
+              New
             </button>
           </div>
         </nav>
