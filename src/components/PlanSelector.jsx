@@ -53,6 +53,37 @@ function PlanForm({ onSubmit, onCancel, initialData = null }) {
     resetForm();
   };
 
+  const handleExportPlan = () => {
+    const planData = {
+      plan: {
+        name: formData.name,
+        startDate: new Date(formData.startDate),
+        endDate: new Date(formData.endDate),
+        excludes: formData.excludes
+          ? formData.excludes
+              .split(",")
+              .map((s) => s.trim())
+              .filter((s) => s.length > 0)
+          : [],
+        id: initialData?.id || uuidv4()
+      },
+      team: [],
+      projects: [],
+    };
+
+    const blob = new Blob([JSON.stringify(planData, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `plan-${formData.name || "new-plan"}-${new Date().toISOString().split("T")[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const resetForm = () => {
     setFormData({
       name: "",
@@ -119,20 +150,32 @@ function PlanForm({ onSubmit, onCancel, initialData = null }) {
             />
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4">
-            <button
-              type="button"
-              onClick={resetForm}
-              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            >
-              {initialData ? "Save" : "Add"}
-            </button>
+          <div className="flex justify-between pt-4">
+            <div>
+              <button
+                type="button"
+                onClick={handleExportPlan}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 inline-flex items-center"
+              >
+                <ArrowUpTrayIcon className="h-4 w-4 mr-1" />
+                Export
+              </button>
+            </div>
+            <div className="flex space-x-3">
+              <button
+                type="button"
+                onClick={resetForm}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                {initialData ? "Save" : "Add"}
+              </button>
+            </div>
           </div>
         </form>
       </div>

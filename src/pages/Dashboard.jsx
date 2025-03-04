@@ -105,12 +105,7 @@ export default function Dashboard() {
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">Dashboard</h2>
         <div className="flex gap-4">
-          <button
-            onClick={handleExportPlan}
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Export Plan
-          </button>
+          {/* Export button moved to plan form */}
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
