@@ -218,7 +218,7 @@ export function generateGanttMarkup(
   projects = [],
   plan = {},
   viewType = "resource", // 'resource' or 'project'
-  baseUrl = "" // Base URL for links (protocol, host, port)
+  baseUrl = "", // Base URL for links (protocol, host, port)
 ) {
   // Create a cache key based on inputs
   const cacheKey = `${viewType}_${plan?.id || ""}_${assignments.length}_${engineers.length}_${projects.length}`;
@@ -322,9 +322,9 @@ export function generateGanttMarkup(
   markup += `        e :milestone, ${dateUtils.toISOLocalString(safeEndDate)}, 0d\n\n`;
 
   // Add click commands for each project
-  projects.forEach(project => {
+  projects.forEach((project) => {
     const shortId = project.id.substring(0, 8);
-    const url = baseUrl ? `${baseUrl}/schedule/p/${shortId}` : `/schedule/p/${shortId}`;
+    const url = `/schedule/p/${shortId}`;
     markup += `  click ${shortId} href "${url}"\n`;
   });
 
