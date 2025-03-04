@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard";
 import Team from "./pages/Team";
 import Projects from "./pages/Projects";
 import GanttView from "./pages/GanttView";
+import DiagramExamples from "./pages/DiagramExamples";
 import { usePlanStore } from "./store/planStore";
 
 function ProtectedRoute({ children }) {
@@ -76,6 +77,10 @@ function App() {
               <GanttView />
             </ProtectedRoute>
           }
+        />
+        <Route
+          path="diagrams"
+          element={<DiagramExamples />}
         />
       </Route>
     </Routes>

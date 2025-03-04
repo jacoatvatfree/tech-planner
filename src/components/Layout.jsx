@@ -5,6 +5,7 @@ import {
   UserGroupIcon,
   ClipboardIcon,
   CalendarIcon,
+  ChartBarIcon,
 } from "@heroicons/react/24/outline";
 import PlanSelector from "./PlanSelector";
 import { usePlanStore } from "../store/planStore";
@@ -24,6 +25,12 @@ const getNavigation = (hasPlan) => [
     icon: CalendarIcon,
     alwaysShow: false,
   },
+  // {
+  //   name: "Diagrams",
+  //   href: "/diagrams",
+  //   icon: ChartBarIcon,
+  //   alwaysShow: true,
+  // },
 ];
 
 function Layout() {
@@ -82,7 +89,7 @@ function Layout() {
 
       <main className="py-10">
         <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-          {currentPlanId ? (
+          {currentPlanId || window.location.pathname === '/diagrams' ? (
             <Outlet />
           ) : (
             <div className="text-center py-12">
