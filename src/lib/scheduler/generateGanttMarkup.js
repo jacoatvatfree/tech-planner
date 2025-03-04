@@ -218,7 +218,6 @@ export function generateGanttMarkup(
   projects = [],
   plan = {},
   viewType = "resource", // 'resource' or 'project'
-  baseUrl = "", // Base URL for links (protocol, host, port)
 ) {
   // Create a cache key based on inputs
   const cacheKey = `${viewType}_${plan?.id || ""}_${assignments.length}_${engineers.length}_${projects.length}`;

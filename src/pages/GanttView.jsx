@@ -12,22 +12,22 @@ import ProjectForm from "../components/projects/ProjectForm";
 
 export default function GanttView() {
   // Get data from stores with more specific selectors
-  const { currentPlan, currentPlanId } = usePlanStore(state => ({
+  const { currentPlan, currentPlanId } = usePlanStore((state) => ({
     currentPlan: state.currentPlan(),
-    currentPlanId: state.currentPlanId
+    currentPlanId: state.currentPlanId,
   }));
-  
-  const { projects, setSchedule, updateProject } = useProjectStore(state => ({
+
+  const { projects, setSchedule, updateProject } = useProjectStore((state) => ({
     projects: state.projects,
     setSchedule: state.setSchedule,
-    updateProject: state.updateProject
+    updateProject: state.updateProject,
   }));
-  
-  const { team, updateTeamMember } = useTeamStore(state => ({
+
+  const { team, updateTeamMember } = useTeamStore((state) => ({
     team: state.team,
-    updateTeamMember: state.updateTeamMember
+    updateTeamMember: state.updateTeamMember,
   }));
-  
+
   const [scheduleData, setScheduleData] = useState(null);
   const [markup, setMarkup] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -35,7 +35,7 @@ export default function GanttView() {
   const [viewType, setViewType] = useState("resource");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
-  
+
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -43,22 +43,25 @@ export default function GanttView() {
   // Memoize filtered data
   const planProjects = useMemo(
     () => projects.filter((p) => p.planId === currentPlanId),
-    [projects, currentPlanId]
+    [projects, currentPlanId],
   );
 
   const planTeam = useMemo(
     () => team.filter((t) => t.planId === currentPlanId),
-    [team, currentPlanId]
+    [team, currentPlanId],
   );
 
   // Separate effect for updating team member planIds
   useEffect(() => {
     if (currentPlanId && team.length > 0) {
       const teamMembersToUpdate = team.filter(
-        (teamMember) => !teamMember.planId
+        (teamMember) => !teamMember.planId,
       );
       teamMembersToUpdate.forEach((teamMember) => {
-        updateTeamMember(teamMember.id, { ...teamMember, planId: currentPlanId });
+        updateTeamMember(teamMember.id, {
+          ...teamMember,
+          planId: currentPlanId,
+        });
       });
     }
   }, [currentPlanId, team, updateTeamMember]);
@@ -92,7 +95,7 @@ export default function GanttView() {
         planProjects,
         planTeam,
         currentPlan?.excludes || [],
-        currentPlan?.startDate || null
+        currentPlan?.startDate || null,
       );
 
       // Only update if we have actual changes
@@ -109,16 +112,12 @@ export default function GanttView() {
         setSchedule(result);
       }
 
-      // Get the base URL (protocol, host, port)
-      const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-      
       const newMarkup = generateGanttMarkup(
         result?.assignments || [],
         planTeam,
         planProjects,
         currentPlan,
         viewType,
-        baseUrl
       );
 
       if (!newMarkup) {
@@ -138,34 +137,36 @@ export default function GanttView() {
     planTeam,
     viewType,
     scheduleData,
-    setSchedule
+    setSchedule,
   ]);
 
   // Update schedule when dependencies change
   useEffect(() => {
     calculateAndSetSchedule();
   }, [calculateAndSetSchedule]);
-  
+
   // Check for shortId in URL path
   useEffect(() => {
     // Check if the URL contains /p/{shortId}
     const match = location.pathname.match(/\/schedule\/p\/([a-zA-Z0-9]{8})$/);
-    
+
     if (match && planProjects.length > 0) {
       const shortId = match[1];
       // Find project with matching shortId (first 8 chars of full ID)
-      const project = planProjects.find(p => p.id.substring(0, 8) === shortId);
-      
+      const project = planProjects.find(
+        (p) => p.id.substring(0, 8) === shortId,
+      );
+
       if (project) {
         setEditingProject(project);
         setIsModalOpen(true);
-        
+
         // Clear the path parameter after opening the modal
-        navigate('/schedule', { replace: true });
+        navigate("/schedule", { replace: true });
       }
     }
   }, [location.pathname, planProjects, navigate]);
-  
+
   // Handle project update
   const handleUpdateProject = async (project) => {
     try {
@@ -174,17 +175,18 @@ export default function GanttView() {
         ...project,
         id: editingProject.id,
         planId: currentPlanId || editingProject.planId,
-        allocations: project.allocations?.map(allocation => ({
-          ...allocation,
-          startDate: new Date(allocation.startDate),
-          endDate: new Date(allocation.endDate),
-        })) || [],
+        allocations:
+          project.allocations?.map((allocation) => ({
+            ...allocation,
+            startDate: new Date(allocation.startDate),
+            endDate: new Date(allocation.endDate),
+          })) || [],
       };
 
       await updateProject(updatedProject);
       setIsModalOpen(false);
       setEditingProject(null);
-      
+
       // Recalculate schedule to reflect changes
       calculateAndSetSchedule();
     } catch (error) {
@@ -245,7 +247,7 @@ export default function GanttView() {
         </div>
       </div>
       {markup && <GanttChart markup={markup} />}
-      
+
       {/* Project Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
