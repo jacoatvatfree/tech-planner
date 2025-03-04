@@ -138,58 +138,117 @@ export default function ProjectForm({
                 estimatedHours: parseInt(e.target.value),
               })
             }
-            className="form-input mt-1 block w-1/4 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            className="form-input mt-1 block w-1/6 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
             min="0"
             required
           />
-          <div className="flex flex-wrap gap-2 mt-1 w-3/4">
-            {[
-              { label: "1d", hours: 8 },
-              { label: "2d", hours: 16 },
-              { label: "3d", hours: 24 },
-              { label: "1w", hours: 40 },
-              { label: "2w", hours: 80 },
-              { label: "3w", hours: 120 },
-              { label: "4w", hours: 160 },
-              { label: "6w", hours: 240 },
-            ].map(({ label, hours }) => (
+          <div className="flex flex-col gap-1 mt-1 w-5/6">
+            <div className="flex gap-2">
               <button
-                key={label}
                 type="button"
                 onClick={() =>
-                  setFormData({ ...formData, estimatedHours: hours })
+                  setFormData({
+                    ...formData,
+                    estimatedHours: Math.max(0, formData.estimatedHours - 8),
+                  })
                 }
                 className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
               >
-                {label}
+                -d
               </button>
-            ))}
-            <button
-              key="+1d"
-              type="button"
-              onClick={() =>
-                setFormData({
-                  ...formData,
-                  estimatedHours: formData.estimatedHours + 8,
-                })
-              }
-              className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-            >
-              +1d
-            </button>
-            <button
-              key="-1d"
-              type="button"
-              onClick={() =>
-                setFormData({
-                  ...formData,
-                  estimatedHours: formData.estimatedHours - 8,
-                })
-              }
-              className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-            >
-              -1d
-            </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setFormData({ ...formData, estimatedHours: 8 })
+                }
+                className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              >
+                1d
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setFormData({ ...formData, estimatedHours: 16 })
+                }
+                className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              >
+                2d
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setFormData({ ...formData, estimatedHours: 24 })
+                }
+                className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              >
+                3d
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setFormData({
+                    ...formData,
+                    estimatedHours: formData.estimatedHours + 8,
+                  })
+                }
+                className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              >
+                +d
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  setFormData({
+                    ...formData,
+                    estimatedHours: Math.max(0, formData.estimatedHours - 40),
+                  })
+                }
+                className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              >
+                -w
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setFormData({ ...formData, estimatedHours: 40 })
+                }
+                className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              >
+                1w
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setFormData({ ...formData, estimatedHours: 80 })
+                }
+                className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              >
+                2w
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setFormData({ ...formData, estimatedHours: 120 })
+                }
+                className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              >
+                3w
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setFormData({
+                    ...formData,
+                    estimatedHours: formData.estimatedHours + 40,
+                  })
+                }
+                className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              >
+                +w
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -10,24 +10,26 @@ export default function TeamMemberSelect({
   return (
     <div>
       <label className="form-label">Allocate Team Members</label>
-      <select
-        multiple
-        value={selectedTeamMembers}
-        onChange={(e) => {
-          const selectedTeamMembers = Array.from(
-            e.target.selectedOptions,
-            (option) => option.value,
-          );
-          onTeamMemberSelect(selectedTeamMembers);
-        }}
-        className="form-select min-h-[120px]"
-      >
+      <div className="flex flex-col gap-2">
         {team.map((teamMember) => (
-          <option key={teamMember.id} value={teamMember.id}>
-            {teamMember.name}
-          </option>
+          <label key={teamMember.id} className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              value={teamMember.id}
+              checked={selectedTeamMembers.includes(teamMember.id)}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  onTeamMemberSelect([...selectedTeamMembers, teamMember.id]);
+                } else {
+                  onTeamMemberSelect(selectedTeamMembers.filter(id => id !== teamMember.id));
+                }
+              }}
+              className="form-checkbox"
+            />
+            <span>{teamMember.name}</span>
+          </label>
         ))}
-      </select>
+      </div>
     </div>
   );
 }
