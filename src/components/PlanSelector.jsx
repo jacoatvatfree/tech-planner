@@ -4,12 +4,16 @@ import { useProjectStore } from "../store/projectStore";
 import { useTeamStore } from "../store/teamStore";
 import logger from "../utils/logger";
 import { makePlan } from "../lib/factories";
-import { deprecatedGetTeamData, deprecatedAllocationsToTeamMemberIds } from "../utils/deprecatedCompatibility";
+import {
+  deprecatedGetTeamData,
+  deprecatedAllocationsToTeamMemberIds,
+} from "../utils/deprecatedCompatibility";
 import {
   PlusIcon,
   TrashIcon,
   ArrowUpTrayIcon,
   PencilIcon,
+  DocumentArrowDownIcon,
 } from "@heroicons/react/24/outline";
 import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
@@ -65,7 +69,7 @@ function PlanForm({ onSubmit, onCancel, initialData = null }) {
               .map((s) => s.trim())
               .filter((s) => s.length > 0)
           : [],
-        id: initialData?.id || uuidv4()
+        id: initialData?.id || uuidv4(),
       },
       team: [],
       projects: [],
@@ -155,9 +159,9 @@ function PlanForm({ onSubmit, onCancel, initialData = null }) {
               <button
                 type="button"
                 onClick={handleExportPlan}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 inline-flex items-center"
+                className="px-4 py-2 text-sm font-medium text-gray-800 bg-blue-100 rounded-md hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 inline-flex items-center"
               >
-                <ArrowUpTrayIcon className="h-4 w-4 mr-1" />
+                <DocumentArrowDownIcon className="h-4 w-4 mr-1" />
                 Export
               </button>
             </div>
@@ -307,9 +311,13 @@ export default function PlanSelector() {
           planId: newPlanId,
           allocations: newAllocations,
           // Map teamMemberIds to new IDs or extract from allocations
-          teamMemberIds: project.teamMemberIds 
-            ? project.teamMemberIds.map(id => teamMemberIdMap[id]).filter(Boolean)
-            : (newAllocations.length ? deprecatedAllocationsToTeamMemberIds(newAllocations) : [])
+          teamMemberIds: project.teamMemberIds
+            ? project.teamMemberIds
+                .map((id) => teamMemberIdMap[id])
+                .filter(Boolean)
+            : newAllocations.length
+              ? deprecatedAllocationsToTeamMemberIds(newAllocations)
+              : [],
         };
 
         return addProject(newProject);
