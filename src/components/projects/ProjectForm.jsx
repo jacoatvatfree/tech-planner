@@ -164,6 +164,32 @@ export default function ProjectForm({
                 {label}
               </button>
             ))}
+            <button
+              key="+1d"
+              type="button"
+              onClick={() =>
+                setFormData({
+                  ...formData,
+                  estimatedHours: formData.estimatedHours + 8,
+                })
+              }
+              className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            >
+              +1d
+            </button>
+            <button
+              key="-1d"
+              type="button"
+              onClick={() =>
+                setFormData({
+                  ...formData,
+                  estimatedHours: formData.estimatedHours - 8,
+                })
+              }
+              className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            >
+              -1d
+            </button>
           </div>
         </div>
       </div>
