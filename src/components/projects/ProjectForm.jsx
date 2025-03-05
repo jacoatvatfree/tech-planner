@@ -52,7 +52,7 @@ export default function ProjectForm({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("Form data before submit:", formData);
+    // console.log("Form data before submit:", formData);
     const projectData = {
       ...(editingProject ? { id: editingProject.id } : {}),
       ...makeProject({
@@ -68,7 +68,7 @@ export default function ProjectForm({
       planId: editingProject?.planId,
     };
 
-    console.log("Project data being submitted:", projectData);
+    // console.log("Project data being submitted:", projectData);
     onSubmit(projectData);
     resetForm();
   };
@@ -158,27 +158,21 @@ export default function ProjectForm({
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  setFormData({ ...formData, estimatedHours: 8 })
-                }
+                onClick={() => setFormData({ ...formData, estimatedHours: 8 })}
                 className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
               >
                 1d
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  setFormData({ ...formData, estimatedHours: 16 })
-                }
+                onClick={() => setFormData({ ...formData, estimatedHours: 16 })}
                 className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
               >
                 2d
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  setFormData({ ...formData, estimatedHours: 24 })
-                }
+                onClick={() => setFormData({ ...formData, estimatedHours: 24 })}
                 className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
               >
                 3d
@@ -211,18 +205,14 @@ export default function ProjectForm({
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  setFormData({ ...formData, estimatedHours: 40 })
-                }
+                onClick={() => setFormData({ ...formData, estimatedHours: 40 })}
                 className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
               >
                 1w
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  setFormData({ ...formData, estimatedHours: 80 })
-                }
+                onClick={() => setFormData({ ...formData, estimatedHours: 80 })}
                 className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
               >
                 2w

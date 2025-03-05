@@ -20,9 +20,10 @@ export default function ProjectList({ onEdit }) {
   const handleUpdateAllocations = (projectId, teamMemberIds) => {
     const project = projects.find((p) => p.id === projectId);
     if (project) {
+      const { allocations, ...restProject } = project;
       updateProject({
-        ...project,
-        teamMemberIds,
+        ...restProject,
+        teamMemberIds: (teamMemberIds && Array.isArray(teamMemberIds)) ? teamMemberIds : [],
       });
     }
   };

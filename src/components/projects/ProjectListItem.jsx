@@ -81,9 +81,9 @@ export default function ProjectListItem({
             </div>
             <div className="space-y-2">
               {team.map((teamMember) => {
-                const isAssigned = project.teamMemberIds?.includes(teamMember.id) || 
-                  // For backward compatibility with old format
-                  project.allocations?.some(a => a.engineerId === teamMember.id);
+                const teamMemberIds = project.teamMemberIds ?? [];
+                const legacyIds = project.allocations ? project.allocations.map(a => a.engineerId) : [];
+                const isAssigned = teamMemberIds.includes(teamMember.id) || legacyIds.includes(teamMember.id);
                 
                 return (
                   <div
@@ -95,18 +95,13 @@ export default function ProjectListItem({
                       id={`team-member-${teamMember.id}-${project.id}`}
                       checked={isAssigned}
                       onChange={(e) => {
-                        // Get current team member IDs (from either format)
-                        const currentTeamMemberIds = project.teamMemberIds || 
-                          (project.allocations?.map(a => a.engineerId) || []);
-                        
+                        const currentTeamMemberIds = teamMemberIds;
                         if (e.target.checked) {
-                          // Add team member
                           onUpdateAllocations([
                             ...currentTeamMemberIds.filter(id => id !== teamMember.id),
                             teamMember.id
                           ]);
                         } else {
-                          // Remove team member
                           onUpdateAllocations(
                             currentTeamMemberIds.filter(id => id !== teamMember.id)
                           );

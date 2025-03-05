@@ -20,7 +20,6 @@ export default function Team() {
     if (currentPlanId) {
       initializeTeam(currentPlanId);
     }
-    console.log(currentPlanId);
   }, [currentPlanId, initializeTeam]);
 
   const handleAddTeamMember = (teamMember) => {
@@ -90,7 +89,9 @@ export default function Team() {
       </div>
       {isModalOpen && (
         <TeamMemberForm
-          onSubmit={editingTeamMember ? handleUpdateTeamMember : handleAddTeamMember}
+          onSubmit={
+            editingTeamMember ? handleUpdateTeamMember : handleAddTeamMember
+          }
           onCancel={() => {
             setIsModalOpen(false);
             setEditingTeamMember(null);
@@ -104,7 +105,9 @@ export default function Team() {
 
 function TeamMemberForm({ onSubmit, onCancel, editingTeamMember }) {
   const [formData, setFormData] = useState(
-    editingTeamMember ? { ...editingTeamMember } : { name: "", weeklyHours: 40 },
+    editingTeamMember
+      ? { ...editingTeamMember }
+      : { name: "", weeklyHours: 40 },
   );
 
   const handleSubmit = (e) => {
