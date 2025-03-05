@@ -10,8 +10,11 @@ const DebugSection = lazy(() => import("./DebugSection").then(module => ({
 export default function GanttChart({ markup }) {
   const [showDebug, setShowDebug] = useState(false);
   
-  // Memoize the markup to prevent unnecessary re-renders
-  const memoizedMarkup = useMemo(() => markup, [markup]);
+  // Memoize the markup with a key to force re-render when needed
+  const memoizedMarkup = useMemo(() => {
+    // Add a timestamp to ensure the markup is treated as new even if the string is the same
+    return markup + `\n%% Render key: ${Date.now()}`;
+  }, [markup]);
   
   // Check if markup is too large (could cause performance issues)
   const isLargeChart = useMemo(() => {

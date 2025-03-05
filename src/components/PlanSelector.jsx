@@ -14,6 +14,8 @@ import {
   ArrowUpTrayIcon,
   PencilIcon,
   DocumentArrowDownIcon,
+  ArrowUturnLeftIcon,
+  ArrowUturnRightIcon,
 } from "@heroicons/react/24/outline";
 import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
@@ -197,6 +199,10 @@ export default function PlanSelector() {
     setCurrentPlanId,
     currentPlanId,
     removePlan,
+    undoChange,
+    redoChange,
+    undoStack,
+    redoStack,
   } = usePlanStore();
   const [planToEdit, setPlanToEdit] = useState(null);
   const { initializeProjects, addProject } = useProjectStore();
@@ -352,17 +358,43 @@ export default function PlanSelector() {
           </select>
           <div className="flex space-x-2">
             {currentPlanId && (
-              <button
-                type="button"
-                onClick={() => {
-                  const plan = plans.find((p) => p.id === currentPlanId);
-                  handleDeletePlan(plan.id, plan.name);
-                }}
-                className="p-2 text-gray-400 hover:text-red-600 rounded-md hover:bg-gray-100"
-                title="Delete current plan"
-              >
-                <TrashIcon className="h-5 w-5" />
-              </button>
+              <>
+                <button
+                  onClick={undoChange}
+                  disabled={undoStack.length === 0}
+                  className={`p-2 rounded-md ${
+                    undoStack.length > 0
+                      ? "text-gray-400 hover:text-blue-600 hover:bg-gray-100"
+                      : "text-gray-300 cursor-not-allowed"
+                  }`}
+                  title="Undo"
+                >
+                  <ArrowUturnLeftIcon className="h-5 w-5" />
+                </button>
+                <button
+                  onClick={redoChange}
+                  disabled={redoStack.length === 0}
+                  className={`p-2 rounded-md ${
+                    redoStack.length > 0
+                      ? "text-gray-400 hover:text-blue-600 hover:bg-gray-100"
+                      : "text-gray-300 cursor-not-allowed"
+                  }`}
+                  title="Redo"
+                >
+                  <ArrowUturnRightIcon className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const plan = plans.find((p) => p.id === currentPlanId);
+                    handleDeletePlan(plan.id, plan.name);
+                  }}
+                  className="p-2 text-gray-400 hover:text-red-600 rounded-md hover:bg-gray-100"
+                  title="Delete current plan"
+                >
+                  <TrashIcon className="h-5 w-5" />
+                </button>
+              </>
             )}
             <div className="flex space-x-2">
               <label className="inline-flex items-center p-2 rounded-md text-white bg-green-100 hover:bg-green-200 cursor-pointer">
@@ -404,6 +436,34 @@ export default function PlanSelector() {
                 {plan.name}
               </button>
               <div className="flex ml-2">
+                {currentPlanId === plan.id && (
+                  <>
+                    <button
+                      onClick={undoChange}
+                      disabled={undoStack.length === 0}
+                      className={`p-1 rounded-full mr-1 ${
+                        undoStack.length > 0
+                          ? "text-gray-400 hover:text-blue-600 hover:bg-gray-100"
+                          : "text-gray-300 cursor-not-allowed"
+                      }`}
+                      title="Undo"
+                    >
+                      <ArrowUturnLeftIcon className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={redoChange}
+                      disabled={redoStack.length === 0}
+                      className={`p-1 rounded-full mr-1 ${
+                        redoStack.length > 0
+                          ? "text-gray-400 hover:text-blue-600 hover:bg-gray-100"
+                          : "text-gray-300 cursor-not-allowed"
+                      }`}
+                      title="Redo"
+                    >
+                      <ArrowUturnRightIcon className="h-4 w-4" />
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={() => handleEditPlan(plan)}
                   className="p-1 text-gray-400 hover:text-blue-600 rounded-full hover:bg-gray-100 mr-1"
@@ -426,6 +486,7 @@ export default function PlanSelector() {
               <ArrowUpTrayIcon className="h-4 w-4 mr-1" />
               Import
               <input
+                type="file"
                 accept=".json"
                 onChange={handleImportPlan}
                 className="hidden"

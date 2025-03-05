@@ -46,18 +46,38 @@ class MermaidDiagram extends React.Component {
       diagramDiv.textContent = this.props.code;
       this.containerRef.current.appendChild(diagramDiv);
       
-      // Process the diagram
-      mermaid.init(undefined, diagramDiv);
+      // Use setTimeout to ensure the DOM is ready before rendering
+      setTimeout(() => {
+        try {
+          // Process the diagram
+          mermaid.parse(this.props.code); // Validate the syntax first
+          mermaid.init(undefined, diagramDiv);
+        } catch (innerError) {
+          console.error("Mermaid rendering error (delayed):", innerError);
+          
+          // Only update if the component is still mounted
+          if (this.containerRef.current) {
+            this.containerRef.current.innerHTML = `
+              <div class="p-4 bg-red-50 text-red-700 rounded">
+                <p class="font-bold">Error rendering diagram:</p>
+                <p>${innerError.message || 'Unknown error'}</p>
+              </div>
+            `;
+          }
+        }
+      }, 0);
     } catch (error) {
       console.error("Mermaid rendering error:", error);
       
       // Display error message
-      this.containerRef.current.innerHTML = `
-        <div class="p-4 bg-red-50 text-red-700 rounded">
-          <p class="font-bold">Error rendering diagram:</p>
-          <p>${error.message || 'Unknown error'}</p>
-        </div>
-      `;
+      if (this.containerRef.current) {
+        this.containerRef.current.innerHTML = `
+          <div class="p-4 bg-red-50 text-red-700 rounded">
+            <p class="font-bold">Error rendering diagram:</p>
+            <p>${error.message || 'Unknown error'}</p>
+          </div>
+        `;
+      }
     }
   }
   

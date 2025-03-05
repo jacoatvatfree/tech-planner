@@ -2,6 +2,7 @@ import { create } from "zustand";
 import logger from "../utils/logger";
 import { clearAllCaches } from "../lib/scheduler";
 import { deprecatedLogEngineerTerminology } from "../utils/deprecatedCompatibility";
+import { usePlanStore } from "./planStore";
 
 const STORAGE_KEY = "engineers_data"; // Keep for backward compatibility
 
@@ -17,6 +18,7 @@ const useTeamStore = create((set, get) => ({
   initializeTeam: (planId) => {
     set({ team: getInitialState(planId), currentPlanId: planId });
   },
+  setTeam: (team) => set({ team }),
   addTeamMember: (teamMember) =>
     set((state) => {
       const planId = state.currentPlanId;
@@ -24,6 +26,17 @@ const useTeamStore = create((set, get) => ({
         logger.error("Cannot add team member: No plan selected");
         return state;
       }
+      
+      // Save current state to history before making changes
+      try {
+        const planStore = usePlanStore.getState();
+        if (planStore && planStore.saveToHistory) {
+          planStore.saveToHistory("Add Team Member");
+        }
+      } catch (e) {
+        logger.error("Failed to save history:", e);
+      }
+      
       const newState = {
         team: [...state.team, { ...teamMember, planId }],
       };
@@ -44,6 +57,17 @@ const useTeamStore = create((set, get) => ({
         logger.error("Cannot update team member: No plan selected");
         return state;
       }
+      
+      // Save current state to history before making changes
+      try {
+        const planStore = usePlanStore.getState();
+        if (planStore && planStore.saveToHistory) {
+          planStore.saveToHistory("Update Team Member");
+        }
+      } catch (e) {
+        logger.error("Failed to save history:", e);
+      }
+      
       const newState = {
         team: state.team.map((teamMember) =>
           teamMember.id === id ? { ...teamMember, ...updates } : teamMember,
@@ -66,6 +90,17 @@ const useTeamStore = create((set, get) => ({
         logger.error("Cannot remove team member: No plan selected");
         return state;
       }
+      
+      // Save current state to history before making changes
+      try {
+        const planStore = usePlanStore.getState();
+        if (planStore && planStore.saveToHistory) {
+          planStore.saveToHistory("Remove Team Member");
+        }
+      } catch (e) {
+        logger.error("Failed to save history:", e);
+      }
+      
       const newState = {
         team: state.team.filter((teamMember) => teamMember.id !== id),
       };
@@ -86,6 +121,17 @@ const useTeamStore = create((set, get) => ({
         logger.error("Cannot clear team: No plan selected");
         return state;
       }
+      
+      // Save current state to history before making changes
+      try {
+        const planStore = usePlanStore.getState();
+        if (planStore && planStore.saveToHistory) {
+          planStore.saveToHistory("Clear Team");
+        }
+      } catch (e) {
+        logger.error("Failed to save history:", e);
+      }
+      
       localStorage.removeItem(`${STORAGE_KEY}_${planId}`);
 
       // Clear caches to ensure schedule is recalculated

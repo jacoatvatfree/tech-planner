@@ -2,6 +2,7 @@ import { create } from "zustand";
 import logger from "../utils/logger";
 import { clearAllCaches } from "../lib/scheduler";
 import { deprecatedAllocationsToTeamMemberIds } from "../utils/deprecatedCompatibility";
+import { usePlanStore } from "./planStore";
 
 const STORAGE_KEY = "projects_data";
 
@@ -56,6 +57,7 @@ const useProjectStore = create((set, get) => ({
   initializeProjects: (planId) => {
     set({ projects: getInitialState(planId), currentPlanId: planId });
   },
+  setProjects: (projects) => set({ projects }),
   setSchedule: (scheduleData) =>
     set((state) => ({
       schedule: {
@@ -70,6 +72,16 @@ const useProjectStore = create((set, get) => ({
       if (!planId) {
         logger.error("Cannot add project: No plan selected");
         return state;
+      }
+      
+      // Save current state to history before making changes
+      try {
+        const planStore = usePlanStore.getState();
+        if (planStore && planStore.saveToHistory) {
+          planStore.saveToHistory("Add Project");
+        }
+      } catch (e) {
+        logger.error("Failed to save history:", e);
       }
       
       // Convert allocations to teamMemberIds if needed
@@ -111,6 +123,16 @@ const useProjectStore = create((set, get) => ({
       if (!planId) {
         logger.error("Cannot update project: No plan selected");
         return state;
+      }
+      
+      // Save current state to history before making changes
+      try {
+        const planStore = usePlanStore.getState();
+        if (planStore && planStore.saveToHistory) {
+          planStore.saveToHistory("Update Project");
+        }
+      } catch (e) {
+        logger.error("Failed to save history:", e);
       }
       
       // Convert allocations to teamMemberIds if needed
@@ -156,6 +178,16 @@ const useProjectStore = create((set, get) => ({
         return state;
       }
       
+      // Save current state to history before making changes
+      try {
+        const planStore = usePlanStore.getState();
+        if (planStore && planStore.saveToHistory) {
+          planStore.saveToHistory("Remove Project");
+        }
+      } catch (e) {
+        logger.error("Failed to save history:", e);
+      }
+      
       const newState = {
         projects: state.projects.filter((project) => project.id !== id),
       };
@@ -177,6 +209,16 @@ const useProjectStore = create((set, get) => ({
         return state;
       }
       
+      // Save current state to history before making changes
+      try {
+        const planStore = usePlanStore.getState();
+        if (planStore && planStore.saveToHistory) {
+          planStore.saveToHistory("Clear Projects");
+        }
+      } catch (e) {
+        logger.error("Failed to save history:", e);
+      }
+      
       localStorage.removeItem(`${STORAGE_KEY}_${planId}`);
       
       // Clear caches to ensure schedule is recalculated
@@ -190,6 +232,16 @@ const useProjectStore = create((set, get) => ({
       if (!planId) {
         logger.error("Cannot reprioritize projects: No plan selected");
         return state;
+      }
+      
+      // Save current state to history before making changes
+      try {
+        const planStore = usePlanStore.getState();
+        if (planStore && planStore.saveToHistory) {
+          planStore.saveToHistory("Reprioritize Projects");
+        }
+      } catch (e) {
+        logger.error("Failed to save history:", e);
       }
       
       const sortedProjects = [...state.projects]
