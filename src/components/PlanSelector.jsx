@@ -21,6 +21,8 @@ import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
 
 function PlanForm({ onSubmit, onCancel, initialData = null }) {
+  const { team, currentPlanId: teamPlanId } = useTeamStore();
+  const { projects, currentPlanId: projectPlanId } = useProjectStore();
   const [formData, setFormData] = useState(
     initialData
       ? {
@@ -60,6 +62,15 @@ function PlanForm({ onSubmit, onCancel, initialData = null }) {
   };
 
   const handleExportPlan = () => {
+    // Get the current plan ID
+    const planId = initialData?.id;
+    
+    // Ensure we're exporting data for the correct plan
+    // Filter team and projects to only include those for this plan
+    const planTeam = team.filter(member => !member.planId || member.planId === planId);
+    const planProjects = projects.filter(project => !project.planId || project.planId === planId);
+    
+    // Create the plan data with the current team and projects
     const planData = {
       plan: {
         name: formData.name,
@@ -71,10 +82,10 @@ function PlanForm({ onSubmit, onCancel, initialData = null }) {
               .map((s) => s.trim())
               .filter((s) => s.length > 0)
           : [],
-        id: initialData?.id || uuidv4(),
+        id: planId || uuidv4(),
       },
-      team: [],
-      projects: [],
+      team: planTeam, // Include only team members for this plan
+      projects: planProjects, // Include only projects for this plan
     };
 
     const blob = new Blob([JSON.stringify(planData, null, 2)], {
