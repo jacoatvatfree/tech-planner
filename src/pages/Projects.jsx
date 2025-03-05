@@ -69,16 +69,18 @@ export default function Projects() {
 
   const handleUpdateProject = async (project) => {
     try {
+      // Convert allocations to teamMemberIds if they exist
+      const teamMemberIds = project.allocations?.length
+        ? [...new Set(project.allocations.map(allocation => allocation.engineerId))]
+        : project.teamMemberIds || [];
+      
       const updatedProject = {
         ...editingProject,
         ...project,
         id: editingProject.id,
         planId: currentPlanId || editingProject.planId,
-        allocations: project.allocations.map((allocation) => ({
-          ...allocation,
-          startDate: new Date(allocation.startDate),
-          endDate: new Date(allocation.endDate),
-        })),
+        teamMemberIds,
+        // allocations property is intentionally omitted to adopt the new schema
       };
 
       await updateProject(updatedProject);

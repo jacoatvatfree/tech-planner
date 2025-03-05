@@ -21,14 +21,15 @@ const getInitialState = (planId) => {
       return project;
     }
     
-  // If the project has allocations, convert them to teamMemberIds
+  // If the project has allocations, convert them to teamMemberIds and discard allocations
   if (project.allocations?.length) {
     // Extract unique engineerIds from allocations using deprecated utility
     const teamMemberIds = deprecatedAllocationsToTeamMemberIds(project.allocations);
     
-    // Return a new project object with teamMemberIds
+    // Return a new project object with teamMemberIds and without allocations
+    const { allocations, ...projectWithoutAllocations } = project;
     return {
-      ...project,
+      ...projectWithoutAllocations,
       teamMemberIds
     };
   }
@@ -91,9 +92,10 @@ const useProjectStore = create((set, get) => ({
         // Extract unique engineerIds from allocations using deprecated utility
         const teamMemberIds = deprecatedAllocationsToTeamMemberIds(project.allocations);
         
-        // Create a new project with teamMemberIds
+        // Create a new project with teamMemberIds and without allocations
+        const { allocations, ...projectWithoutAllocations } = project;
         projectWithTeamMemberIds = {
-          ...project,
+          ...projectWithoutAllocations,
           teamMemberIds
         };
       } else if (!project.teamMemberIds) {
@@ -142,9 +144,10 @@ const useProjectStore = create((set, get) => ({
         // Extract unique engineerIds from allocations using deprecated utility
         const teamMemberIds = deprecatedAllocationsToTeamMemberIds(updatedProject.allocations);
         
-        // Create a new project with teamMemberIds
+        // Create a new project with teamMemberIds and without allocations
+        const { allocations, ...projectWithoutAllocations } = updatedProject;
         projectWithTeamMemberIds = {
-          ...updatedProject,
+          ...projectWithoutAllocations,
           teamMemberIds
         };
       } else if (!updatedProject.teamMemberIds) {

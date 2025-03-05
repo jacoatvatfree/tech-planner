@@ -112,7 +112,16 @@ function TeamMemberForm({ onSubmit, onCancel, editingTeamMember }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(makeTeamMember(formData));
+    if (editingTeamMember) {
+      // When editing, preserve the existing ID and other properties
+      onSubmit({
+        ...formData,
+        id: editingTeamMember.id,
+      });
+    } else {
+      // When adding, create a new team member
+      onSubmit(makeTeamMember(formData));
+    }
   };
 
   return (

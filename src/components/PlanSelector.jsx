@@ -279,11 +279,13 @@ export default function PlanSelector() {
         const newId = uuidv4();
         teamMemberIdMap[oldId] = newId;
 
+        // Create new team member without allocations property
+        const { allocations, ...teamMemberWithoutAllocations } = teamMember;
         const newTeamMember = {
-          ...teamMember,
+          ...teamMemberWithoutAllocations,
           id: newId,
           planId: newPlanId,
-          allocations: [], // Reset allocations as they'll be set via project updates
+          // allocations property is intentionally omitted to adopt the new schema
         };
         return addTeamMember(newTeamMember);
       });
@@ -322,21 +324,23 @@ export default function PlanSelector() {
         const isStartAfterEpoch =
           startAfter && startAfter.getFullYear() === 1970;
 
+        // Convert allocations to teamMemberIds and discard allocations
+        const teamMemberIds = project.teamMemberIds
+          ? project.teamMemberIds
+              .map((id) => teamMemberIdMap[id])
+              .filter(Boolean)
+          : newAllocations.length
+            ? deprecatedAllocationsToTeamMemberIds(newAllocations)
+            : [];
+            
         const newProject = {
           ...project,
           id: newId,
           startAfter: isStartAfterEpoch ? null : startAfter, // Only reset if it's 1970-01-01
           endBefore: project.endBefore ? new Date(project.endBefore) : null, // Keep endBefore as it's a constraint
           planId: newPlanId,
-          allocations: newAllocations,
-          // Map teamMemberIds to new IDs or extract from allocations
-          teamMemberIds: project.teamMemberIds
-            ? project.teamMemberIds
-                .map((id) => teamMemberIdMap[id])
-                .filter(Boolean)
-            : newAllocations.length
-              ? deprecatedAllocationsToTeamMemberIds(newAllocations)
-              : [],
+          teamMemberIds, // Use the converted teamMemberIds
+          // allocations property is intentionally omitted to adopt the new schema
         };
 
         return addProject(newProject);

@@ -9,7 +9,9 @@
 export const isTeamMemberAvailable = (teamMemberId, startDate, endDate, assignments) => {
   // Check if the team member has any overlapping assignments
   const overlappingAssignments = assignments.filter(assignment => {
-    if (assignment.engineerId !== teamMemberId) return false;
+    // Check if assignment has engineerId (old format) or teamMemberId (new format)
+    const assignmentTeamMemberId = assignment.teamMemberId || assignment.engineerId;
+    if (assignmentTeamMemberId !== teamMemberId) return false;
     
     const assignmentStart = new Date(assignment.startDate);
     const assignmentEnd = new Date(assignment.endDate);

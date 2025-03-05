@@ -82,8 +82,7 @@ export default function ProjectListItem({
             <div className="space-y-2">
               {team.map((teamMember) => {
                 const teamMemberIds = project.teamMemberIds ?? [];
-                const legacyIds = project.allocations ? project.allocations.map(a => a.engineerId) : [];
-                const isAssigned = teamMemberIds.includes(teamMember.id) || legacyIds.includes(teamMember.id);
+                const isAssigned = teamMemberIds.includes(teamMember.id);
                 
                 return (
                   <div

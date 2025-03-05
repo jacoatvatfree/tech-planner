@@ -41,13 +41,17 @@ const schedulingUtils = {
 
   findOverlappingAssignments: (
     assignments,
-    engineerId,
+    teamMemberId,
     startDate,
     endDate,
     excludes,
   ) => {
     return assignments
-      .filter((a) => a.engineerId === engineerId)
+      .filter((a) => {
+        // Support both old format (engineerId) and new format (teamMemberId)
+        const assignmentTeamMemberId = a.teamMemberId || a.engineerId;
+        return assignmentTeamMemberId === teamMemberId;
+      })
       .filter((a) => {
         const assignmentStart = new Date(a.startDate);
         const assignmentEnd = dateUtils.addWorkingDays(
@@ -129,17 +133,17 @@ function memoizedCalculateProjectDuration(project, engineers) {
 }
 
 // Memoized version of findOverlappingAssignments
-function memoizedFindOverlappingAssignments(assignments, engineerId, startDate, endDate, excludes) {
+function memoizedFindOverlappingAssignments(assignments, teamMemberId, startDate, endDate, excludes) {
   const startStr = startDate.toISOString();
   const endStr = endDate.toISOString();
-  const cacheKey = `${engineerId}_${startStr}_${endStr}`;
+  const cacheKey = `${teamMemberId}_${startStr}_${endStr}`;
   
   if (calculationCache.overlappingAssignments.has(cacheKey)) {
     return calculationCache.overlappingAssignments.get(cacheKey);
   }
   
   const result = schedulingUtils.findOverlappingAssignments(
-    assignments, engineerId, startDate, endDate, excludes
+    assignments, teamMemberId, startDate, endDate, excludes
   );
   calculationCache.overlappingAssignments.set(cacheKey, result);
   return result;
@@ -283,7 +287,8 @@ function createAssignments(project, engineers, commonStartDate, baseDate, weeksN
     newAssignments.push({
       projectId: project.id,
       projectName: project.name,
-      engineerId: engineer.id,
+      teamMemberId: engineer.id, // Use teamMemberId instead of engineerId
+      engineerId: engineer.id, // Keep engineerId for backward compatibility
       startWeek: latestStartWeek,
       weeksNeeded,
       percentage: 100, // Always 100% since team members are fully allocated to one project at a time
@@ -387,8 +392,10 @@ function calculateResourceUtilization(scheduledProjects, availableEngineers) {
 
     if (project.assignments) {
       for (const assignment of project.assignments) {
+        // Support both old format (engineerId) and new format (teamMemberId)
+        const assignmentTeamMemberId = assignment.teamMemberId || assignment.engineerId;
         const engineer = availableEngineers.find(
-          (e) => e.id === assignment.engineerId
+          (e) => e.id === assignmentTeamMemberId
         );
         if (!engineer) continue;
 
@@ -519,8 +526,10 @@ export function calculateSchedule(projects, engineers, planExcludes = [], planSt
       );
       
       // Add to engineer availability tracking
-      if (engineerAvailability[assignment.engineerId]) {
-        engineerAvailability[assignment.engineerId].push({
+      // Support both old format (engineerId) and new format (teamMemberId)
+      const assignmentTeamMemberId = assignment.teamMemberId || assignment.engineerId;
+      if (engineerAvailability[assignmentTeamMemberId]) {
+        engineerAvailability[assignmentTeamMemberId].push({
           startDate,
           endDate,
           projectId: assignment.projectId

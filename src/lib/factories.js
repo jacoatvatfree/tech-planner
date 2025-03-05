@@ -31,20 +31,29 @@ export const makeProject = ({
   endBefore = null,
   priority = 3,
   teamMemberIds = [],
-  allocations = [], // Keep for backward compatibility
+  allocations = [], // Parameter kept for backward compatibility
   percentComplete = 0,
-}) => ({
-  id: uuidv4(),
-  name,
-  description,
-  estimatedHours,
-  startAfter,
-  endBefore,
-  priority,
-  teamMemberIds,
-  allocations, // Keep for backward compatibility
-  percentComplete,
-});
+}) => {
+  // Convert allocations to teamMemberIds if needed
+  let finalTeamMemberIds = teamMemberIds;
+  if (!teamMemberIds.length && allocations.length) {
+    finalTeamMemberIds = [...new Set(allocations.map(allocation => allocation.engineerId))];
+    logger.warn("DEPRECATED: Converting allocations to teamMemberIds in makeProject");
+  }
+  
+  return {
+    id: uuidv4(),
+    name,
+    description,
+    estimatedHours,
+    startAfter,
+    endBefore,
+    priority,
+    teamMemberIds: finalTeamMemberIds,
+    // allocations property is intentionally omitted to adopt the new schema
+    percentComplete,
+  };
+};
 
 /**
  * @deprecated Create a new allocation
