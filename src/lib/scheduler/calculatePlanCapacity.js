@@ -1,3 +1,5 @@
+import { dateUtils } from "./dateUtils";
+
 export function calculatePlanCapacity(team, scheduleData, plan, projects) {
   // Ensure we have valid arrays to work with
   const assignments = scheduleData?.assignments || [];
@@ -18,20 +20,23 @@ export function calculatePlanCapacity(team, scheduleData, plan, projects) {
   const endOfPlan = new Date(plan.endDate);
   endOfPlan.setHours(23, 59, 59, 999);
 
-  // Calculate working days between dates (excluding weekends)
-  function getWorkingDays(startDate, endDate) {
+  // Calculate working days between dates (excluding weekends and plan excludes)
+  function getWorkingDays(startDate, endDate, excludes) {
     let count = 0;
     const curDate = new Date(startDate.getTime());
+    
     while (curDate <= endDate) {
-      const dayOfWeek = curDate.getDay();
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) count++;
+      // Check if date is a weekend or excluded date
+      if (!dateUtils.isWeekend(curDate) && !dateUtils.isExcludedDate(curDate, excludes)) {
+        count++;
+      }
       curDate.setDate(curDate.getDate() + 1);
     }
     return count;
   }
 
-  // Get total working days in the plan period
-  const workingDays = getWorkingDays(startOfPlan, endOfPlan);
+  // Get total working days in the plan period, properly accounting for all excludes
+  const workingDays = getWorkingDays(startOfPlan, endOfPlan, plan.excludes || []);
 
   // Calculate total capacity based on working days
   const totalCapacityHours = team.reduce((sum, teamMember) => {
@@ -39,18 +44,9 @@ export function calculatePlanCapacity(team, scheduleData, plan, projects) {
     return sum + dailyHours * workingDays;
   }, 0);
 
-  // Subtract standard holidays (approximate)
-  const AVERAGE_HOLIDAYS_PER_MONTH = 1.67; // 20 holidays per year / 12 months
-  const monthsDuration = (endOfPlan - startOfPlan) / (30 * 24 * 60 * 60 * 1000);
-  const estimatedHolidays = Math.round(
-    monthsDuration * AVERAGE_HOLIDAYS_PER_MONTH,
-  );
-
-  // Adjust total capacity for holidays
-  const adjustedCapacityHours = team.reduce((sum, teamMember) => {
-    const dailyHours = (teamMember.weeklyHours || 40) / 5;
-    return sum - dailyHours * estimatedHolidays;
-  }, totalCapacityHours);
+  // We no longer need to subtract holidays separately since we're already
+  // accounting for all excluded days (including holidays) in the workingDays calculation
+  const adjustedCapacityHours = totalCapacityHours;
 
   // Calculate assigned hours from assignments
   const assignedHours = assignments.reduce((sum, assignment) => {

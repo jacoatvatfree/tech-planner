@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { usePlanStore } from "../store/planStore";
 import { useProjectStore } from "../store/projectStore";
 import { useTeamStore } from "../store/teamStore";
@@ -27,6 +27,11 @@ export default function Dashboard() {
     utilizationPercentage: 0,
   });
   const [scheduleData, setScheduleData] = useState();
+  const [timelineProgress, setTimelineProgress] = useState({
+    percentage: 0,
+    overrunPercentage: 0,
+    latestEndDate: null,
+  });
 
   // Memoize filtered data
   const planProjects = React.useMemo(
@@ -77,6 +82,66 @@ export default function Dashboard() {
     setUtilization(newUtilization);
   }, [calculateUtilization]);
 
+  // Calculate timeline progress
+  const calculateTimelineProgress = useCallback(() => {
+    if (!currentPlan || !scheduleData?.scheduledProjects?.length) {
+      return {
+        percentage: 0,
+        overrunPercentage: 0,
+        latestEndDate: null,
+      };
+    }
+
+    const planStart = new Date(currentPlan.startDate);
+    const planEnd = new Date(currentPlan.endDate);
+    const planDuration = planEnd.getTime() - planStart.getTime();
+    
+    if (planDuration <= 0) {
+      return {
+        percentage: 0,
+        overrunPercentage: 0,
+        latestEndDate: null,
+      };
+    }
+
+    // Find the latest end date among all scheduled projects
+    const projectEndDates = scheduleData.scheduledProjects
+      .filter(p => p.endDate)
+      .map(p => new Date(p.endDate));
+    
+    if (!projectEndDates.length) {
+      return {
+        percentage: 0,
+        overrunPercentage: 0,
+        latestEndDate: null,
+      };
+    }
+    
+    const latestEndDate = new Date(Math.max(...projectEndDates.map(d => d.getTime())));
+    
+    // Calculate percentage of plan timeline used
+    let percentage = ((latestEndDate.getTime() - planStart.getTime()) / planDuration) * 100;
+    let overrunPercentage = 0;
+    
+    // If the latest end date exceeds the plan end date, calculate overrun
+    if (latestEndDate > planEnd) {
+      overrunPercentage = ((latestEndDate.getTime() - planEnd.getTime()) / planDuration) * 100;
+      percentage = 100; // Cap the normal percentage at 100%
+    }
+    
+    return {
+      percentage: Math.round(percentage),
+      overrunPercentage: Math.round(overrunPercentage),
+      latestEndDate,
+    };
+  }, [currentPlan, scheduleData]);
+
+  // Update timeline progress when schedule data changes
+  useEffect(() => {
+    const newTimelineProgress = calculateTimelineProgress();
+    setTimelineProgress(newTimelineProgress);
+  }, [calculateTimelineProgress]);
+
   const handleExportPlan = () => {
     if (!currentPlan) return;
 
@@ -108,7 +173,7 @@ export default function Dashboard() {
           {/* Export button moved to plan form */}
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="bg-white shadow rounded-lg p-4">
           <h3 className="text-lg font-medium mb-4">Plan Resource Usage</h3>
           <div className="space-y-4">
@@ -145,11 +210,82 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="bg-white shadow rounded-lg p-4">
-          <h3 className="text-lg font-medium mb-2">Project Overview</h3>
-          <p>Total Projects: {projects.length}</p>
-          <p>Total Team Members: {team.length}</p>
+          <h3 className="text-lg font-medium mb-4">Project Overview</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col items-center justify-center p-3 bg-blue-50 rounded-lg">
+              <span className="text-4xl font-bold text-blue-600">{planProjects.length}</span>
+              <span className="text-sm text-gray-600 mt-2">Total Projects</span>
+            </div>
+            <div className="flex flex-col items-center justify-center p-3 bg-green-50 rounded-lg">
+              <span className="text-4xl font-bold text-green-600">{planTeam.length}</span>
+              <span className="text-sm text-gray-600 mt-2">Team Members</span>
+            </div>
+          </div>
         </div>
       </div>
+      
+      {currentPlan && (
+        <div className="bg-white shadow rounded-lg p-4 mb-4">
+          <h3 className="text-lg font-medium mb-4">Plan Timeline Usage</h3>
+          <div className="space-y-4">
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className="text-sm font-medium text-gray-700">
+                  Schedule
+                </span>
+                <span className="text-sm font-medium text-gray-700">
+                  {timelineProgress.percentage + timelineProgress.overrunPercentage}%
+                  {timelineProgress.overrunPercentage > 0 && ` (${timelineProgress.overrunPercentage}% overrun)`}
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                {timelineProgress.overrunPercentage > 0 ? (
+                  // When there's an overrun, scale both parts to fit in the container
+                  <div className="w-full h-full flex">
+                    {/* Normal progress (scaled) */}
+                    <div 
+                      className="h-2.5 bg-blue-600 flex-shrink-0"
+                      style={{
+                        width: `${(timelineProgress.percentage / (timelineProgress.percentage + timelineProgress.overrunPercentage)) * 100}%`,
+                        borderRight: '2px solid white'
+                      }}
+                    ></div>
+                    {/* Overrun portion (scaled) */}
+                    <div 
+                      className="h-2.5 bg-orange-500 flex-shrink-0"
+                      style={{
+                        width: `${(timelineProgress.overrunPercentage / (timelineProgress.percentage + timelineProgress.overrunPercentage)) * 100}%`
+                      }}
+                    ></div>
+                  </div>
+                ) : (
+                  // When there's no overrun, just show normal progress
+                  <div
+                    className="h-2.5 bg-blue-600"
+                    style={{
+                      width: `${timelineProgress.percentage}%`
+                    }}
+                  ></div>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
+              <div>
+                <p>Plan Start: {new Date(currentPlan.startDate).toLocaleDateString()}</p>
+                <p>Plan End: {new Date(currentPlan.endDate).toLocaleDateString()}</p>
+              </div>
+              <div>
+                {timelineProgress.latestEndDate && (
+                  <p className={timelineProgress.overrunPercentage > 0 ? "text-orange-500 font-medium text-right" : ""}>
+                    Latest Project End: {timelineProgress.latestEndDate.toLocaleDateString()}
+                    {timelineProgress.overrunPercentage > 0 && " (overrun)"}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
